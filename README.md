@@ -1,6 +1,6 @@
 # Autonomous Company Research & Report Generation Agent
 
-This project is the foundation for an autonomous company research system that will eventually gather evidence, reason over it, synthesize findings, and generate executive-ready reports. The current repository only contains the minimal Python structure needed to support that future work, with no external integrations enabled yet.
+This project is the foundation for an autonomous company research system that will later gather evidence, reason over it, synthesize findings, and produce executive-ready reports. At this stage it only provides a clean Python package structure, local environment loading, and basic project organization.
 
 ## Project Overview
 
@@ -19,23 +19,29 @@ autonomous-company-research-agent/
 │   └── state.py
 ├── agents/
 │   └── __init__.py
+├── data/
+│   ├── raw/
+│   │   └── .gitkeep
+│   └── processed/
+│       └── .gitkeep
+├── docs/
+│   └── .gitkeep
 ├── graph/
 │   └── __init__.py
-├── rag/
-│   └── __init__.py
-├── tools/
-│   └── __init__.py
+├── n8n/
+│   └── .gitkeep
 ├── prompts/
 │   └── README.md
+├── rag/
+│   └── __init__.py
 ├── reports/
 │   └── .gitkeep
 ├── tests/
 │   ├── __init__.py
 │   └── test_smoke.py
-├── docs/
-│   └── .gitkeep
-├── n8n/
-│   └── .gitkeep
+├── tools/
+│   └── __init__.py
+├── .env
 ├── .env.example
 ├── .gitignore
 ├── README.md
@@ -57,25 +63,38 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-### 3. Run the project
+### 3. Install dependencies
+
+```powershell
+pip install -r requirements.txt
+```
+
+### 4. Run the project
 
 ```powershell
 python run.py
 ```
 
-### 4. Run the tests
+### 5. Run the tests
 
 ```powershell
-python -m unittest discover -s tests
+python -m unittest discover -s tests -v
 ```
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` if you need local secrets, then fill in your own values. The `.env` file is ignored by Git, and real credentials must never be committed.
+`.env.example` documents the required variable names. Copy it to `.env` for local credentials and keep your values empty until you are ready to configure them. `.env` is for local use only, must never be committed, and API credentials are optional during the foundation stage.
+
+## Data Directories
+
+- `data/raw/`: original input documents.
+- `data/processed/`: transformed data produced during future ingestion.
+
+No RAG, API, LangGraph, or autonomous-agent functionality has been implemented yet.
 
 ## Roadmap
 
-1. Add the first research workflow and orchestration layer.
+1. Add research workflow orchestration.
 2. Introduce ReAct-style reasoning and LangGraph structure.
 3. Connect retrieval with Pinecone and supporting data sources.
 4. Add external APIs, MCP integrations, and N8N orchestration.

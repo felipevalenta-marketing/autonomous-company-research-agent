@@ -1,7 +1,9 @@
 """Environment settings for the project foundation."""
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
+
+from dotenv import load_dotenv
 
 
 @dataclass(frozen=True)
@@ -17,7 +19,8 @@ class Settings:
 
 
 def load_settings() -> Settings:
-    """Load settings from environment variables."""
+    """Load settings from environment variables and the local `.env` file."""
+    load_dotenv()
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         pinecone_api_key=os.getenv("PINECONE_API_KEY"),

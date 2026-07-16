@@ -17,3 +17,7 @@ docs/*
 !docs/.gitkeep
 n8n/*
 !n8n/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep

@@ -1,6 +1,9 @@
 """Smoke tests for the project foundation."""
 
+import os
+from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 from app.main import main
 from app.settings import Settings, load_settings
@@ -19,6 +22,20 @@ class SmokeTest(unittest.TestCase):
     def test_load_settings_returns_settings(self) -> None:
         settings = load_settings()
         self.assertIsInstance(settings, Settings)
+
+    def test_missing_env_vars_do_not_fail(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            settings = load_settings()
+        self.assertIsInstance(settings, Settings)
+
+    def test_settings_fields_are_optional_strings(self) -> None:
+        settings = load_settings()
+        for value in settings.__dict__.values():
+            self.assertTrue(value is None or isinstance(value, str))
+
+    def test_data_directories_exist(self) -> None:
+        self.assertTrue(Path("data/raw").is_dir())
+        self.assertTrue(Path("data/processed").is_dir())
 
 
 if __name__ == "__main__":
