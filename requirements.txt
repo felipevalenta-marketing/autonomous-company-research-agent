@@ -1,0 +1,8 @@
+# Initial foundation uses only the Python standard library.
+# Dependencies will be introduced incrementally when implementing LangChain.
+# Dependencies will be introduced incrementally when implementing LangGraph.
+# Dependencies will be introduced incrementally when implementing OpenAI.
+# Dependencies will be introduced incrementally when implementing Pinecone.
+# Dependencies will be introduced incrementally when implementing API integrations.
+# Dependencies will be introduced incrementally when implementing MCP.
+# Dependencies will be introduced incrementally when implementing N8N integration.
