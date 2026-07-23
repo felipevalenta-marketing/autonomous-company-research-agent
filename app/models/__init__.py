@@ -1,0 +1,2 @@
+"""Canonical model package."""
+

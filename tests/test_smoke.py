@@ -6,8 +6,8 @@ import unittest
 from unittest.mock import patch
 
 from app.main import main
+from app.models.state import CompanyResearchState
 from app.settings import Settings, load_settings
-from app.state import ResearchState
 
 
 class SmokeTest(unittest.TestCase):
@@ -16,8 +16,8 @@ class SmokeTest(unittest.TestCase):
     def test_main_is_callable(self) -> None:
         self.assertTrue(callable(main))
 
-    def test_research_state_imports(self) -> None:
-        self.assertEqual(ResearchState.__name__, "ResearchState")
+    def test_company_research_state_imports(self) -> None:
+        self.assertEqual(CompanyResearchState.__name__, "CompanyResearchState")
 
     def test_load_settings_returns_settings(self) -> None:
         settings = load_settings()

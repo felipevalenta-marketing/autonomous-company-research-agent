@@ -12,42 +12,42 @@ This project is the foundation for an autonomous company research system that wi
 
 ```text
 autonomous-company-research-agent/
-├── app/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── settings.py
-│   └── state.py
-├── agents/
-│   └── __init__.py
-├── data/
-│   ├── raw/
-│   │   └── .gitkeep
-│   └── processed/
-│       └── .gitkeep
-├── docs/
-│   └── .gitkeep
-├── graph/
-│   └── __init__.py
-├── n8n/
-│   └── .gitkeep
-├── prompts/
-│   └── README.md
-├── rag/
-│   └── __init__.py
-├── reports/
-│   └── .gitkeep
-├── tests/
-│   ├── __init__.py
-│   └── test_smoke.py
-├── tools/
-│   └── __init__.py
-├── .env
-├── .env.example
-├── .gitignore
-├── README.md
-├── requirements.txt
-└── run.py
+|-- app/
+|   |-- __init__.py
+|   |-- main.py
+|   |-- settings.py
+|   |-- config/
+|   |-- models/
+|   |-- utils/
+|   |-- clients/
+|   |-- services/
+|   |-- rag/
+|   |-- prompts/
+|   |-- exporters/
+|   |-- nodes/
+|   `-- graph/
+|-- agents/
+|-- data/
+|   |-- raw/
+|   |-- cache/
+|   `-- processed/
+|-- docs/
+|-- graph/
+|-- n8n/
+|-- prompts/
+|-- rag/
+|-- reports/
+|-- outputs/
+|-- tests/
+|-- tools/
+|-- .env
+|-- .env.example
+|-- .gitignore
+|-- README.md
+|-- requirements.txt
 ```
+
+Legacy root-level placeholder packages are preserved for compatibility with earlier scaffolding: `agents/`, `graph/`, `rag/`, `prompts/`, and `tools/`.
 
 ## Setup
 
@@ -72,7 +72,7 @@ pip install -r requirements.txt
 ### 4. Run the project
 
 ```powershell
-python run.py
+python -m app.main
 ```
 
 ### 5. Run the tests

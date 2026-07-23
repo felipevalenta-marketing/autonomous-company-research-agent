@@ -13,7 +13,6 @@ Thumbs.db
 *.log
 reports/*
 !reports/.gitkeep
-docs/*
 !docs/.gitkeep
 n8n/*
 !n8n/.gitkeep
@@ -21,3 +20,7 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+data/cache/*
+!data/cache/.gitkeep
+outputs/*
+!outputs/.gitkeep
