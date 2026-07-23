@@ -27,6 +27,7 @@ def build_runtime_config(settings: Settings) -> RuntimeConfig:
         tavily_api_key=settings.tavily_api_key,
         news_api_key=settings.news_api_key,
         alpha_vantage_api_key=settings.alpha_vantage_api_key,
+        sec_user_agent=settings.sec_user_agent,
         max_retries=DEFAULT_MAX_RETRIES,
         timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
         output_directory=DEFAULT_OUTPUT_DIRECTORY,

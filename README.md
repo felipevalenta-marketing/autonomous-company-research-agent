@@ -7,6 +7,8 @@ This project is the foundation for an autonomous company research system that wi
 - Selected industry: Market Research & Competitive Intelligence
 - Current project status: Foundation setup
 - Planned core components: ReAct, LangGraph, Pinecone RAG, external APIs, MCP, N8N, and report generation
+- Implemented SEC company resolution uses a configured `SEC_USER_AGENT` and does not require live SEC access for unit tests.
+- The SEC integration currently includes deterministic company resolution plus offline submissions and company-facts retrieval.
 
 ## Current Folder Structure
 
@@ -81,9 +83,13 @@ python -m app.main
 python -m unittest discover -s tests -v
 ```
 
+The test suite remains fully offline and uses mocked SEC responses.
+
 ## Environment Variables
 
 `.env.example` documents the required variable names. Copy it to `.env` for local credentials and keep your values empty until you are ready to configure them. `.env` is for local use only, must never be committed, and API credentials are optional during the foundation stage.
+
+For SEC company resolution, set `SEC_USER_AGENT` to a descriptive header string that includes the application identity and a valid contact channel.
 
 ## Data Directories
 

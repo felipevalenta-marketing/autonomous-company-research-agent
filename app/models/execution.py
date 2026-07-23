@@ -73,6 +73,7 @@ class RuntimeConfig:
     tavily_api_key: str | None = None
     news_api_key: str | None = None
     alpha_vantage_api_key: str | None = None
+    sec_user_agent: str | None = None
     max_retries: int = 3
     timeout_seconds: float = 30.0
     output_directory: str = "outputs"
@@ -167,4 +168,3 @@ class ExecutionResult:
         _require_text(self.execution_id, "execution_id")
         if self.status not in _EXECUTION_STATUSES:
             raise ValueError(f"status must be one of: {sorted(_EXECUTION_STATUSES)}")
-

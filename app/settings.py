@@ -11,6 +11,7 @@ from app.config.constants import (
     OPENAI_API_KEY_ENV,
     PINECONE_API_KEY_ENV,
     PINECONE_INDEX_NAME_ENV,
+    SEC_USER_AGENT_ENV,
     TAVILY_API_KEY_ENV,
 )
 
@@ -25,6 +26,7 @@ class Settings:
     tavily_api_key: str | None = None
     news_api_key: str | None = None
     alpha_vantage_api_key: str | None = None
+    sec_user_agent: str | None = None
 
 
 def load_settings() -> Settings:
@@ -37,4 +39,5 @@ def load_settings() -> Settings:
         tavily_api_key=os.getenv(TAVILY_API_KEY_ENV),
         news_api_key=os.getenv(NEWS_API_KEY_ENV),
         alpha_vantage_api_key=os.getenv(ALPHA_VANTAGE_API_KEY_ENV),
+        sec_user_agent=os.getenv(SEC_USER_AGENT_ENV),
     )

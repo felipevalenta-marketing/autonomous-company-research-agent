@@ -17,6 +17,7 @@ from app.config.defaults import (
     DEFAULT_TIMEOUT_SECONDS,
     build_runtime_config,
 )
+from app.config.constants import SEC_USER_AGENT_ENV
 from app.models.execution import RuntimeConfig
 from app.settings import Settings, load_settings
 
@@ -34,6 +35,7 @@ class ConfigurationTests(unittest.TestCase):
                 "TAVILY_API_KEY": "tavily-key",
                 "NEWS_API_KEY": "news-key",
                 "ALPHA_VANTAGE_API_KEY": "alpha-key",
+                SEC_USER_AGENT_ENV: "Example App (dev@example.com)",
             },
             clear=True,
         ):
@@ -46,12 +48,14 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(settings.tavily_api_key, "tavily-key")
         self.assertEqual(settings.news_api_key, "news-key")
         self.assertEqual(settings.alpha_vantage_api_key, "alpha-key")
+        self.assertEqual(settings.sec_user_agent, "Example App (dev@example.com)")
 
     def test_missing_env_vars_do_not_fail(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             settings = load_settings()
 
         self.assertIsInstance(settings, Settings)
+        self.assertIsNone(settings.sec_user_agent)
         for value in settings.__dict__.values():
             self.assertTrue(value is None or isinstance(value, str))
 
@@ -63,6 +67,7 @@ class ConfigurationTests(unittest.TestCase):
             tavily_api_key="tavily-key",
             news_api_key="news-key",
             alpha_vantage_api_key="alpha-key",
+            sec_user_agent="Example App (dev@example.com)",
         )
 
         runtime_config = build_runtime_config(settings)
@@ -74,6 +79,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(runtime_config.tavily_api_key, "tavily-key")
         self.assertEqual(runtime_config.news_api_key, "news-key")
         self.assertEqual(runtime_config.alpha_vantage_api_key, "alpha-key")
+        self.assertEqual(runtime_config.sec_user_agent, "Example App (dev@example.com)")
         self.assertEqual(runtime_config.max_retries, DEFAULT_MAX_RETRIES)
         self.assertEqual(runtime_config.timeout_seconds, DEFAULT_TIMEOUT_SECONDS)
         self.assertEqual(runtime_config.output_directory, DEFAULT_OUTPUT_DIRECTORY)
@@ -86,4 +92,3 @@ class ConfigurationTests(unittest.TestCase):
             runtime_config.enable_official_company_sources,
             DEFAULT_ENABLE_OFFICIAL_COMPANY_SOURCES,
         )
-

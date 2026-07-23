@@ -1,5 +1,6 @@
 # Runtime dependencies
 python-dotenv==1.2.2
+httpx==0.28.1
 
 # Future dependencies will be added incrementally when implementing:
 # - LangChain and LangGraph
