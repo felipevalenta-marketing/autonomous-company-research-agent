@@ -9,6 +9,7 @@ This project is the foundation for an autonomous company research system that wi
 - Planned core components: ReAct, LangGraph, Pinecone RAG, external APIs, MCP, N8N, and report generation
 - Implemented SEC company resolution uses a configured `SEC_USER_AGENT` and does not require live SEC access for unit tests.
 - The SEC integration currently includes deterministic company resolution plus offline submissions and company-facts retrieval.
+- The repository also includes an offline-testable NewsAPI provider layer for the `/v2/everything` endpoint.
 
 ## Current Folder Structure
 
@@ -90,13 +91,14 @@ The test suite remains fully offline and uses mocked SEC responses.
 `.env.example` documents the required variable names. Copy it to `.env` for local credentials and keep your values empty until you are ready to configure them. `.env` is for local use only, must never be committed, and API credentials are optional during the foundation stage.
 
 For SEC company resolution, set `SEC_USER_AGENT` to a descriptive header string that includes the application identity and a valid contact channel.
+For NewsAPI provider calls, set `NEWS_API_KEY`; the MVP uses only the `/v2/everything` endpoint.
 
 ## Data Directories
 
 - `data/raw/`: original input documents.
 - `data/processed/`: transformed data produced during future ingestion.
 
-No RAG, API, LangGraph, or autonomous-agent functionality has been implemented yet.
+No RAG, LangGraph, or autonomous-agent workflow has been implemented yet.
 
 ## Roadmap
 

@@ -16,6 +16,12 @@ DEFAULT_ENABLE_NEWS = False
 DEFAULT_ENABLE_MARKET_RESEARCH = False
 DEFAULT_ENABLE_OFFICIAL_COMPANY_SOURCES = False
 
+DEFAULT_NEWS_LANGUAGE = "en"
+DEFAULT_NEWS_SORT_BY = "publishedAt"
+DEFAULT_NEWS_PAGE_SIZE = 20
+DEFAULT_NEWS_MAX_PAGE_SIZE = 100
+DEFAULT_NEWS_LOOKBACK_DAYS = 7
+
 
 def build_runtime_config(settings: Settings) -> RuntimeConfig:
     """Map settings into the canonical runtime configuration."""
