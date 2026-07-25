@@ -16,8 +16,18 @@ from app.config.defaults import (
     DEFAULT_RAW_DATA_DIRECTORY,
     DEFAULT_TIMEOUT_SECONDS,
     build_runtime_config,
+    build_pinecone_config,
+    PineconeConfig,
 )
-from app.config.constants import SEC_USER_AGENT_ENV
+from app.config.constants import (
+    PINECONE_API_VERSION_ENV,
+    PINECONE_INDEX_HOST_ENV,
+    PINECONE_MAX_QUERY_TOP_K_ENV,
+    PINECONE_MAX_UPSERT_BATCH_SIZE_ENV,
+    PINECONE_NAMESPACE_PREFIX_ENV,
+    PINECONE_VECTOR_DIMENSION_ENV,
+    SEC_USER_AGENT_ENV,
+)
 from app.models.execution import RuntimeConfig
 from app.settings import Settings, load_settings
 
@@ -34,6 +44,12 @@ class ConfigurationTests(unittest.TestCase):
                 "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small",
                 "PINECONE_API_KEY": "pinecone-key",
                 "PINECONE_INDEX_NAME": "research-index",
+                PINECONE_INDEX_HOST_ENV: "https://example-index.svc.pinecone.io",
+                PINECONE_NAMESPACE_PREFIX_ENV: "company",
+                PINECONE_VECTOR_DIMENSION_ENV: "1536",
+                PINECONE_API_VERSION_ENV: "2024-07",
+                PINECONE_MAX_UPSERT_BATCH_SIZE_ENV: "50",
+                PINECONE_MAX_QUERY_TOP_K_ENV: "10",
                 "TAVILY_API_KEY": "tavily-key",
                 "NEWS_API_KEY": "news-key",
                 "ALPHA_VANTAGE_API_KEY": "alpha-key",
@@ -49,6 +65,12 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(settings.openai_embedding_model, "text-embedding-3-small")
         self.assertEqual(settings.pinecone_api_key, "pinecone-key")
         self.assertEqual(settings.pinecone_index_name, "research-index")
+        self.assertEqual(settings.pinecone_index_host, "https://example-index.svc.pinecone.io")
+        self.assertEqual(settings.pinecone_namespace_prefix, "company")
+        self.assertEqual(settings.pinecone_vector_dimension, "1536")
+        self.assertEqual(settings.pinecone_api_version, "2024-07")
+        self.assertEqual(settings.pinecone_max_upsert_batch_size, "50")
+        self.assertEqual(settings.pinecone_max_query_top_k, "10")
         self.assertEqual(settings.tavily_api_key, "tavily-key")
         self.assertEqual(settings.news_api_key, "news-key")
         self.assertEqual(settings.alpha_vantage_api_key, "alpha-key")
@@ -63,6 +85,12 @@ class ConfigurationTests(unittest.TestCase):
         for value in settings.__dict__.values():
             self.assertTrue(value is None or isinstance(value, str))
 
+        pinecone_config = build_pinecone_config(settings)
+        self.assertEqual(pinecone_config.index_host, None)
+        self.assertGreater(pinecone_config.vector_dimension, 0)
+        self.assertGreater(pinecone_config.max_upsert_batch_size, 0)
+        self.assertGreater(pinecone_config.max_query_top_k, 0)
+
     def test_runtime_config_mapping_uses_safe_defaults(self) -> None:
         settings = Settings(
             openai_api_key="openai-key",
@@ -70,6 +98,12 @@ class ConfigurationTests(unittest.TestCase):
             openai_embedding_model="text-embedding-3-small",
             pinecone_api_key="pinecone-key",
             pinecone_index_name="research-index",
+            pinecone_index_host="https://example-index.svc.pinecone.io",
+            pinecone_namespace_prefix="company",
+            pinecone_vector_dimension="1536",
+            pinecone_api_version="2024-07",
+            pinecone_max_upsert_batch_size="50",
+            pinecone_max_query_top_k="10",
             tavily_api_key="tavily-key",
             news_api_key="news-key",
             alpha_vantage_api_key="alpha-key",
@@ -98,3 +132,14 @@ class ConfigurationTests(unittest.TestCase):
             runtime_config.enable_official_company_sources,
             DEFAULT_ENABLE_OFFICIAL_COMPANY_SOURCES,
         )
+
+        pinecone_config = build_pinecone_config(settings)
+
+        self.assertIsInstance(pinecone_config, PineconeConfig)
+        self.assertEqual(pinecone_config.api_key, "pinecone-key")
+        self.assertEqual(pinecone_config.index_host, "https://example-index.svc.pinecone.io")
+        self.assertEqual(pinecone_config.namespace_prefix, "company")
+        self.assertEqual(pinecone_config.vector_dimension, 1536)
+        self.assertEqual(pinecone_config.api_version, "2024-07")
+        self.assertEqual(pinecone_config.max_upsert_batch_size, 50)
+        self.assertEqual(pinecone_config.max_query_top_k, 10)

@@ -12,6 +12,7 @@ This project is the foundation for an autonomous company research system that wi
 - The repository also includes an offline-testable NewsAPI provider layer for the `/v2/everything` endpoint.
 - The repository also includes an offline-testable Tavily provider layer for the `/search` endpoint.
 - The repository also includes an offline-testable OpenAI embeddings layer for vector preparation only.
+- The repository also includes an offline-testable Pinecone vector boundary for upsert, query, and controlled delete operations against an already-created index.
 
 ## Current Folder Structure
 
@@ -96,6 +97,7 @@ For SEC company resolution, set `SEC_USER_AGENT` to a descriptive header string 
 For NewsAPI provider calls, set `NEWS_API_KEY`; the MVP uses only the `/v2/everything` endpoint.
 For Tavily provider calls, set `TAVILY_API_KEY`; the MVP uses only the `/search` endpoint and defers `/extract`.
 For OpenAI embeddings, set `OPENAI_API_KEY` and optionally override `OPENAI_BASE_URL` or `OPENAI_EMBEDDING_MODEL` if needed; this stage only prepares embeddings and does not include text generation.
+For Pinecone vector operations, set `PINECONE_API_KEY`, `PINECONE_INDEX_HOST`, `PINECONE_NAMESPACE_PREFIX`, `PINECONE_VECTOR_DIMENSION`, and optional bounds such as `PINECONE_API_VERSION`, `PINECONE_MAX_UPSERT_BATCH_SIZE`, and `PINECONE_MAX_QUERY_TOP_K`. The index must already exist, namespaces are company-scoped and deterministic, and upsert/delete acknowledgements are eventually consistent rather than immediately query-visible.
 
 ## Data Directories
 
