@@ -10,6 +10,7 @@ This project is the foundation for an autonomous company research system that wi
 - Implemented SEC company resolution uses a configured `SEC_USER_AGENT` and does not require live SEC access for unit tests.
 - The SEC integration currently includes deterministic company resolution plus offline submissions and company-facts retrieval.
 - The repository also includes an offline-testable NewsAPI provider layer for the `/v2/everything` endpoint.
+- The repository also includes an offline-testable Tavily provider layer for the `/search` endpoint.
 
 ## Current Folder Structure
 
@@ -84,7 +85,7 @@ python -m app.main
 python -m unittest discover -s tests -v
 ```
 
-The test suite remains fully offline and uses mocked SEC responses.
+The test suite remains fully offline and uses mocked provider responses.
 
 ## Environment Variables
 
@@ -92,6 +93,7 @@ The test suite remains fully offline and uses mocked SEC responses.
 
 For SEC company resolution, set `SEC_USER_AGENT` to a descriptive header string that includes the application identity and a valid contact channel.
 For NewsAPI provider calls, set `NEWS_API_KEY`; the MVP uses only the `/v2/everything` endpoint.
+For Tavily provider calls, set `TAVILY_API_KEY`; the MVP uses only the `/search` endpoint and defers `/extract`.
 
 ## Data Directories
 

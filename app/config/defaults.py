@@ -22,6 +22,11 @@ DEFAULT_NEWS_PAGE_SIZE = 20
 DEFAULT_NEWS_MAX_PAGE_SIZE = 100
 DEFAULT_NEWS_LOOKBACK_DAYS = 7
 
+DEFAULT_TAVILY_TOPIC = "general"
+DEFAULT_TAVILY_MAX_RESULTS = 5
+DEFAULT_TAVILY_LOOKBACK_DAYS = 30
+DEFAULT_TAVILY_MAX_LOOKBACK_DAYS = 365
+
 
 def build_runtime_config(settings: Settings) -> RuntimeConfig:
     """Map settings into the canonical runtime configuration."""
