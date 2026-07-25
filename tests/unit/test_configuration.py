@@ -30,6 +30,8 @@ class ConfigurationTests(unittest.TestCase):
             os.environ,
             {
                 "OPENAI_API_KEY": "openai-key",
+                "OPENAI_BASE_URL": "https://api.openai.com/v1",
+                "OPENAI_EMBEDDING_MODEL": "text-embedding-3-small",
                 "PINECONE_API_KEY": "pinecone-key",
                 "PINECONE_INDEX_NAME": "research-index",
                 "TAVILY_API_KEY": "tavily-key",
@@ -43,6 +45,8 @@ class ConfigurationTests(unittest.TestCase):
 
         self.assertIsInstance(settings, Settings)
         self.assertEqual(settings.openai_api_key, "openai-key")
+        self.assertEqual(settings.openai_base_url, "https://api.openai.com/v1")
+        self.assertEqual(settings.openai_embedding_model, "text-embedding-3-small")
         self.assertEqual(settings.pinecone_api_key, "pinecone-key")
         self.assertEqual(settings.pinecone_index_name, "research-index")
         self.assertEqual(settings.tavily_api_key, "tavily-key")
@@ -62,6 +66,8 @@ class ConfigurationTests(unittest.TestCase):
     def test_runtime_config_mapping_uses_safe_defaults(self) -> None:
         settings = Settings(
             openai_api_key="openai-key",
+            openai_base_url="https://api.openai.com/v1",
+            openai_embedding_model="text-embedding-3-small",
             pinecone_api_key="pinecone-key",
             pinecone_index_name="research-index",
             tavily_api_key="tavily-key",

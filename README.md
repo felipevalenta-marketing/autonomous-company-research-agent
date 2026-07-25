@@ -11,6 +11,7 @@ This project is the foundation for an autonomous company research system that wi
 - The SEC integration currently includes deterministic company resolution plus offline submissions and company-facts retrieval.
 - The repository also includes an offline-testable NewsAPI provider layer for the `/v2/everything` endpoint.
 - The repository also includes an offline-testable Tavily provider layer for the `/search` endpoint.
+- The repository also includes an offline-testable OpenAI embeddings layer for vector preparation only.
 
 ## Current Folder Structure
 
@@ -94,6 +95,7 @@ The test suite remains fully offline and uses mocked provider responses.
 For SEC company resolution, set `SEC_USER_AGENT` to a descriptive header string that includes the application identity and a valid contact channel.
 For NewsAPI provider calls, set `NEWS_API_KEY`; the MVP uses only the `/v2/everything` endpoint.
 For Tavily provider calls, set `TAVILY_API_KEY`; the MVP uses only the `/search` endpoint and defers `/extract`.
+For OpenAI embeddings, set `OPENAI_API_KEY` and optionally override `OPENAI_BASE_URL` or `OPENAI_EMBEDDING_MODEL` if needed; this stage only prepares embeddings and does not include text generation.
 
 ## Data Directories
 
