@@ -13,7 +13,7 @@ from app.services.evidence_assembly_service import (
     EvidenceAssemblyConsistencyError,
     EvidenceAssemblyInputError,
     EvidenceBundle,
-    EvidenceRecord,
+    RAGEvidenceRecord,
     assemble_evidence,
 )
 from app.services.rag_query_service import RAGQueryResult
@@ -185,6 +185,7 @@ class EvidenceAssemblyServiceTests(unittest.TestCase):
         with self.assertRaises(FrozenInstanceError):
             bundle.query = "changed"  # type: ignore[misc]
 
+        self.assertIsInstance(evidence, RAGEvidenceRecord)
         json.dumps(asdict(evidence))
         json.dumps(asdict(bundle))
 

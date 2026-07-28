@@ -22,8 +22,8 @@ class EvidenceAssemblyConsistencyError(EvidenceAssemblyError):
 
 
 @dataclass(frozen=True, slots=True)
-class EvidenceRecord:
-    """Immutable traceable evidence item derived from a normalized RAG result."""
+class RAGEvidenceRecord:
+    """Immutable traceable RAG evidence item."""
 
     result_id: str
     query: str
@@ -58,7 +58,7 @@ class EvidenceBundle:
 
     query: str
     evidence_count: int
-    evidence: tuple[EvidenceRecord, ...]
+    evidence: tuple[RAGEvidenceRecord, ...]
     source_count: int
     document_count: int
 
@@ -68,12 +68,12 @@ class EvidenceBundle:
         _require_non_negative_int(self.source_count, "source_count")
         _require_non_negative_int(self.document_count, "document_count")
         if not isinstance(self.evidence, tuple):
-            raise ValueError("evidence must be a tuple of EvidenceRecord instances.")
+            raise ValueError("evidence must be a tuple of RAGEvidenceRecord instances.")
         if self.evidence_count != len(self.evidence):
             raise ValueError("evidence_count must match the evidence tuple length.")
         for item in self.evidence:
-            if not isinstance(item, EvidenceRecord):
-                raise ValueError("evidence must contain EvidenceRecord instances.")
+            if not isinstance(item, RAGEvidenceRecord):
+                raise ValueError("evidence must contain RAGEvidenceRecord instances.")
 
 
 def assemble_evidence(
@@ -120,11 +120,11 @@ def _select_evidence(
     normalized_query: str,
     max_evidence: int,
     minimum_similarity_score: float | None,
-) -> tuple[EvidenceRecord, ...]:
+) -> tuple[RAGEvidenceRecord, ...]:
     if not results:
         return ()
 
-    selected: list[EvidenceRecord] = []
+    selected: list[RAGEvidenceRecord] = []
     seen_result_signatures: dict[str, tuple[str, str, str, str, str, str, float | None, str | None, str | None]] = {}
     seen_ids: set[str] = set()
 
@@ -151,7 +151,7 @@ def _select_evidence(
         seen_ids.add(normalized_result.result_id)
         seen_result_signatures[normalized_result.result_id] = signature
         selected.append(
-            EvidenceRecord(
+            RAGEvidenceRecord(
                 result_id=normalized_result.result_id,
                 query=normalized_query,
                 company_name=normalized_result.company_name,
@@ -170,7 +170,7 @@ def _select_evidence(
     return tuple(selected)
 
 
-def _build_bundle(query: str, evidence: tuple[EvidenceRecord, ...]) -> EvidenceBundle:
+def _build_bundle(query: str, evidence: tuple[RAGEvidenceRecord, ...]) -> EvidenceBundle:
     source_ids = {item.source_id for item in evidence if item.source_id.strip()}
     document_ids = {item.document_id for item in evidence if item.document_id.strip()}
     return EvidenceBundle(
