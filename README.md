@@ -13,6 +13,14 @@ This project is the foundation for an autonomous company research system that wi
 - The repository also includes an offline-testable Tavily provider layer for the `/search` endpoint.
 - The repository also includes an offline-testable OpenAI embeddings layer for vector preparation only.
 - The repository also includes an offline-testable Pinecone vector boundary for upsert, query, and controlled delete operations against an already-created index.
+- The repository also includes an offline-testable semantic retrieval layer that embeds a query, runs one company-scoped Pinecone lookup, and normalizes matches into `RAGResult` records without answer generation.
+- The repository also includes an offline-testable RAG query orchestration service that validates a query, delegates to the retrieval boundary, and returns a `RAGQueryResult` wrapper with the original query plus normalized `RAGResult` values.
+- The repository also includes an offline-testable evidence assembly service that deterministically selects traceable evidence from normalized `RAGResult` values without LLM selection or summarization.
+- The repository also includes an offline-testable document chunking service that currently produces deterministic fixed-size chunks with document and source lineage plus character offsets.
+- ChunkRecord collections can be embedded through the existing `EmbeddingService`; chunk identity and order are preserved, and Pinecone vector preparation and indexing remain separate later stages.
+- Embedded chunks can now be converted into deterministic prepared vector records through the existing vector-preparation boundary; prepared vectors can then flow through the existing vector-indexing boundary before Pinecone.
+- The repository also includes an offline-testable RAG ingestion orchestration service that runs document chunking, chunk embedding, vector preparation, and vector indexing in order; retrieval remains a separate service.
+- The broader recursive chunking path remains a later-stage RAG concern.
 
 ## Current Folder Structure
 
@@ -104,7 +112,7 @@ For Pinecone vector operations, set `PINECONE_API_KEY`, `PINECONE_INDEX_HOST`, `
 - `data/raw/`: original input documents.
 - `data/processed/`: transformed data produced during future ingestion.
 
-No RAG, LangGraph, or autonomous-agent workflow has been implemented yet.
+No LangGraph, autonomous-agent workflow, or answer-generation layer has been implemented yet.
 
 ## Roadmap
 
