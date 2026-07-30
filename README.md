@@ -1,6 +1,6 @@
 # Autonomous Company Research & Report Generation Agent
 
-This project is the foundation for an autonomous company research system that will later gather evidence, reason over it, synthesize findings, and produce executive-ready reports. At this stage it only provides a clean Python package structure, local environment loading, and basic project organization.
+This project is the foundation for an autonomous company research system that will later gather evidence, reason over it, synthesize findings, and produce executive-ready reports. At this stage it provides a clean Python package structure, local environment loading, a minimal LangGraph workflow foundation, and basic project organization.
 
 ## Project Overview
 
@@ -20,6 +20,7 @@ This project is the foundation for an autonomous company research system that wi
 - ChunkRecord collections can be embedded through the existing `EmbeddingService`; chunk identity and order are preserved, and Pinecone vector preparation and indexing remain separate later stages.
 - Embedded chunks can now be converted into deterministic prepared vector records through the existing vector-preparation boundary; prepared vectors can then flow through the existing vector-indexing boundary before Pinecone.
 - The repository also includes an offline-testable RAG ingestion orchestration service that runs document chunking, chunk embedding, vector preparation, and vector indexing in order; retrieval remains a separate service.
+- The repository also includes a minimal LangGraph workflow foundation that initializes a research request, resolves the company, validates the result, and routes to completion or failure without connecting provider collection, RAG, evidence assembly, or report generation yet.
 - The broader recursive chunking path remains a later-stage RAG concern.
 
 ## Current Folder Structure
@@ -112,7 +113,7 @@ For Pinecone vector operations, set `PINECONE_API_KEY`, `PINECONE_INDEX_HOST`, `
 - `data/raw/`: original input documents.
 - `data/processed/`: transformed data produced during future ingestion.
 
-No LangGraph, autonomous-agent workflow, or answer-generation layer has been implemented yet.
+No autonomous-agent reasoning, provider collection, RAG execution, evidence assembly, or answer-generation layer has been connected to the LangGraph foundation yet.
 
 ## Roadmap
 
