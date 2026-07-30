@@ -113,7 +113,7 @@ For Pinecone vector operations, set `PINECONE_API_KEY`, `PINECONE_INDEX_HOST`, `
 - `data/raw/`: original input documents.
 - `data/processed/`: transformed data produced during future ingestion.
 
-No autonomous-agent reasoning, provider collection, RAG execution, evidence assembly, or answer-generation layer has been connected to the LangGraph foundation yet.
+The LangGraph workflow now orchestrates approved company resolution, RAG query retrieval, and evidence assembly, but it still does not perform provider collection, ReAct reasoning, report generation, or n8n integration.
 
 ## Roadmap
 
