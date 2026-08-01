@@ -19,7 +19,9 @@ from app.services.evidence_assembly_service import (
     EvidenceBundle,
     RAGEvidenceRecord,
 )
-from app.services.rag_query_service import RAGQueryInputError, RAGQueryResult
+from app.services.rag_query_service import RAGQueryError, RAGQueryInputError, RAGQueryResult
+from app.rag.retrieval_service import RAGEmbeddingError
+from app.clients.openai_embeddings_client import OpenAIEmbeddingsTransportError
 
 
 class FakeSecClient:
@@ -377,6 +379,75 @@ class LangGraphWorkflowTests(unittest.TestCase):
         self.assertEqual(result["workflow_status"], "failed")
         self.assertEqual(result["current_stage"], "failed")
         self.assertEqual(result["errors"][0].code, "RAGQueryInputError")
+        self.assertNotIn("rag_query_result", result)
+        self.assertNotIn("evidence_bundle", result)
+
+    def test_retrieval_failure_records_direct_typed_error_type(self) -> None:
+        workflow = self._build_workflow(
+            rag_error=RAGEmbeddingError("RAG query embedding failed."),
+            evidence_bundle=self._build_bundle("Assess Apple", (self._build_evidence_record("Assess Apple"),)),
+        )
+
+        result = workflow.invoke({"research_query": "Assess Apple", "company_input": "Apple Inc."})
+
+        error = result["errors"][0]
+        self.assertEqual(result["workflow_status"], "failed")
+        self.assertEqual(result["current_stage"], "failed")
+        self.assertEqual(error.code, "RAGEmbeddingError")
+        self.assertEqual(error.message, "Research retrieval failed.")
+        self.assertEqual(error.details, (("stage", "retrieving_research"), ("error_type", "RAGEmbeddingError")))
+        self.assertNotIn("rag_query_result", result)
+        self.assertNotIn("evidence_bundle", result)
+
+    def test_retrieval_failure_records_immediate_cause_error_type(self) -> None:
+        cause = OpenAIEmbeddingsTransportError("OpenAI embeddings request failed.")
+        
+        def rag_dependency(
+            query: str,
+            resolved_company: ResolvedCompany,
+            embedding_service,
+            vector_query_service,
+            *,
+            top_k: int,
+            metadata_filter=None,
+            namespace_prefix=None,
+        ) -> RAGQueryResult:
+            del query, resolved_company, embedding_service, vector_query_service, top_k, metadata_filter, namespace_prefix
+            raise RAGQueryError("RAG query orchestration failed.") from cause
+
+        workflow = self._build_workflow(
+            rag_query_dependency=rag_dependency,
+            evidence_bundle=self._build_bundle("Assess Apple", (self._build_evidence_record("Assess Apple"),)),
+        )
+
+        result = workflow.invoke({"research_query": "Assess Apple", "company_input": "Apple Inc."})
+
+        error = result["errors"][0]
+        self.assertEqual(result["workflow_status"], "failed")
+        self.assertEqual(result["current_stage"], "failed")
+        self.assertEqual(error.code, "RAGQueryError")
+        self.assertEqual(error.message, "Research retrieval failed.")
+        self.assertEqual(
+            error.details,
+            (("stage", "retrieving_research"), ("error_type", "OpenAIEmbeddingsTransportError")),
+        )
+        self.assertNotIn("rag_query_result", result)
+        self.assertNotIn("evidence_bundle", result)
+
+    def test_retrieval_failure_without_cause_records_own_class_name(self) -> None:
+        workflow = self._build_workflow(
+            rag_error=RAGQueryError("RAG query orchestration failed."),
+            evidence_bundle=self._build_bundle("Assess Apple", (self._build_evidence_record("Assess Apple"),)),
+        )
+
+        result = workflow.invoke({"research_query": "Assess Apple", "company_input": "Apple Inc."})
+
+        error = result["errors"][0]
+        self.assertEqual(result["workflow_status"], "failed")
+        self.assertEqual(result["current_stage"], "failed")
+        self.assertEqual(error.code, "RAGQueryError")
+        self.assertEqual(error.message, "Research retrieval failed.")
+        self.assertEqual(error.details, (("stage", "retrieving_research"), ("error_type", "RAGQueryError")))
         self.assertNotIn("rag_query_result", result)
         self.assertNotIn("evidence_bundle", result)
 

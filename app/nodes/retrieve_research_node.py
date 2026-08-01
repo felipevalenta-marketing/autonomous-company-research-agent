@@ -83,7 +83,10 @@ def build_retrieve_research_node(
                     ResearchWorkflowError(
                         code=exc.__class__.__name__,
                         message="Research retrieval failed.",
-                        details=(("stage", _RETRIEVING_STAGE),),
+                        details=(
+                            ("stage", _RETRIEVING_STAGE),
+                            ("error_type", _retrieval_error_type(exc)),
+                        ),
                     ),
                 ),
             }
@@ -136,3 +139,9 @@ def build_retrieve_research_node(
         }
 
     return retrieve_research
+
+
+def _retrieval_error_type(exc: Exception) -> str:
+    if isinstance(exc, RAGQueryError) and exc.__cause__ is not None:
+        return exc.__cause__.__class__.__name__
+    return exc.__class__.__name__
