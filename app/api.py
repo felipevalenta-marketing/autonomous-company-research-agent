@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hmac import compare_digest
+import logging
 from typing import Callable
 
 from starlette.applications import Starlette
@@ -29,6 +30,7 @@ from app.services.workflow_output_service import WorkflowOutputError
 from app.settings import Settings, load_settings
 
 SERVICE_NAME = "autonomous-company-research-agent"
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +66,12 @@ def create_app(
         try:
             payload = await _read_json_payload(request)
             normalized_request = _normalize_research_request(payload)
-        except ResearchRequestValidationError:
+        except ResearchRequestValidationError as exc:
+            _log_research_request_failure(
+                stage="request_validation",
+                exc=exc,
+                response_status=400,
+            )
             return _invalid_request_response()
 
         try:
@@ -74,7 +81,12 @@ def create_app(
                 dependencies_factory,
                 normalized_request,
             )
-        except ResearchRequestValidationError:
+        except ResearchRequestValidationError as exc:
+            _log_research_request_failure(
+                stage="request_validation",
+                exc=exc,
+                response_status=400,
+            )
             return _invalid_request_response()
         except (
             CompanyResolutionError,
@@ -84,11 +96,26 @@ def create_app(
             PineconeClientError,
             RAGQueryError,
             SecClientError,
-        ):
+        ) as exc:
+            _log_research_request_failure(
+                stage="workflow_execution",
+                exc=exc,
+                response_status=502,
+            )
             return _provider_failure_response()
-        except (WorkflowOutputError, WorkflowIntegrationError, WorkflowIntegrationInputError, WorkflowIntegrationConsistencyError):
+        except (WorkflowOutputError, WorkflowIntegrationError, WorkflowIntegrationInputError, WorkflowIntegrationConsistencyError) as exc:
+            _log_research_request_failure(
+                stage="workflow_output",
+                exc=exc,
+                response_status=500,
+            )
             return _internal_error_response()
-        except Exception:
+        except Exception as exc:
+            _log_research_request_failure(
+                stage="unexpected",
+                exc=exc,
+                response_status=500,
+            )
             return _internal_error_response()
 
         return JSONResponse(result, status_code=200)
@@ -224,3 +251,14 @@ def _internal_error_response() -> JSONResponse:
         status_code=500,
     )
 
+
+def _log_research_request_failure(*, stage: str, exc: Exception, response_status: int) -> None:
+    cause = getattr(exc, "__cause__", None)
+    cause_type = type(cause).__name__ if isinstance(cause, Exception) else "None"
+    _LOGGER.warning(
+        "research_request_failed stage=%s error_type=%s cause_type=%s response_status=%s",
+        stage,
+        type(exc).__name__,
+        cause_type,
+        response_status,
+    )

@@ -13,7 +13,8 @@ from app.clients.sec_client import SecTransportError
 from app.models.company import ResolvedCompany
 from app.services.evidence_assembly_service import EvidenceBundle, RAGEvidenceRecord
 from app.services.workflow_integration_service import run_completed_workflow
-from app.services.workflow_output_service import WorkflowOutput, build_workflow_output
+from app.services.workflow_output_service import WorkflowOutput, WorkflowOutputInputError, build_workflow_output
+from app.services.rag_query_service import RAGQueryError
 from app.settings import Settings
 
 
@@ -359,7 +360,7 @@ class ApiTests(unittest.TestCase):
             ),
         )
 
-        with TestClient(app) as client:
+        with TestClient(app) as client, self.assertLogs("app.api", level="WARNING") as logs:
             response = client.post(
                 "/research",
                 headers={"X-API-Key": "secret"},
@@ -381,6 +382,10 @@ class ApiTests(unittest.TestCase):
             },
         )
         self.assertNotIn("secret provider detail", response.text)
+        self.assertEqual(
+            logs.records[0].getMessage(),
+            "research_request_failed stage=workflow_execution error_type=SecTransportError cause_type=None response_status=502",
+        )
 
     def test_unexpected_failure_returns_safe_500_and_hides_details(self) -> None:
         def factory(settings, **kwargs):  # noqa: ANN001, ANN003
@@ -388,7 +393,7 @@ class ApiTests(unittest.TestCase):
 
         app = create_app(settings_loader=lambda: self._build_settings(), dependencies_factory=factory)
 
-        with TestClient(app) as client:
+        with TestClient(app) as client, self.assertLogs("app.api", level="WARNING") as logs:
             response = client.post(
                 "/research",
                 headers={"X-API-Key": "secret"},
@@ -410,6 +415,53 @@ class ApiTests(unittest.TestCase):
             },
         )
         self.assertNotIn("unexpected secret detail", response.text)
+        self.assertEqual(
+            logs.records[0].getMessage(),
+            "research_request_failed stage=unexpected error_type=RuntimeError cause_type=None response_status=500",
+        )
+
+    def test_output_failure_logs_exception_and_cause_without_secrets(self) -> None:
+        def failing_build_workflow_output(state):  # noqa: ANN001
+            del state
+            raise WorkflowOutputInputError("output secret") from RAGQueryError("nested secret")
+
+        app = create_app(
+            settings_loader=lambda: self._build_settings(),
+            dependencies_factory=lambda settings, **kwargs: SimpleNamespace(  # noqa: ARG005
+                workflow=RecordingWorkflow(result={"workflow_status": "completed", "current_stage": "completed"}),
+                build_workflow_output=failing_build_workflow_output,
+                run_completed_workflow=run_completed_workflow,
+                cleanup=lambda: None,
+            ),
+        )
+
+        with TestClient(app) as client, self.assertLogs("app.api", level="WARNING") as logs:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "INTERNAL_RESEARCH_ERROR",
+                "message": "The research workflow could not be completed.",
+            },
+        )
+        self.assertEqual(
+            logs.records[0].getMessage(),
+            "research_request_failed stage=workflow_output error_type=WorkflowOutputInputError cause_type=RAGQueryError response_status=500",
+        )
+        self.assertNotIn("output secret", logs.records[0].getMessage())
+        self.assertNotIn("nested secret", logs.records[0].getMessage())
 
     def test_clients_close_exactly_once_on_success(self) -> None:
         workflow_output = self._build_workflow_output()
