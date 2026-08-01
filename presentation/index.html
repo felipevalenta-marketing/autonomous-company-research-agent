@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autonomous Company Research Agent — Ironhack Project 3</title>
+<meta name="description" content="From SEC filings to structured business intelligence — an autonomous, source-grounded research pipeline.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+<nav class="deck-nav" aria-label="Presentation navigation">
+  <div class="deck-nav__brand">ACRA</div>
+  <div class="deck-nav__dots" id="nav-dots" role="tablist" aria-label="Slides"></div>
+  <div class="deck-nav__right">
+    <span class="deck-nav__counter" id="slide-counter" aria-live="polite">01 / 09</span>
+    <button class="deck-nav__present" id="present-toggle" type="button" aria-pressed="false">Presentation Mode</button>
+  </div>
+</nav>
+<div class="progress-bar" aria-hidden="true"><div class="progress-bar__fill" id="progress-fill"></div></div>
+
+<main id="deck">
+
+  <!-- 1. TITLE -->
+  <section class="slide slide--hero" id="slide-1" data-title="Title" aria-label="Title slide">
+    <div class="slide__inner">
+      <p class="eyebrow">Ironhack — AI Consulting &amp; Integration — Project 3</p>
+      <h1 class="hero-title">Autonomous Company Research Agent</h1>
+      <p class="hero-subtitle">From SEC filings to structured business intelligence</p>
+      <p class="hero-presenter">Carlos Felipe Valencia</p>
+      <div class="scroll-cue" aria-hidden="true"><span></span></div>
+    </div>
+  </section>
+
+  <!-- 2. ABOUT ME -->
+  <section class="slide" id="slide-2" data-title="About Me" aria-label="About me">
+    <div class="slide__inner slide__inner--split">
+      <div class="slide__col">
+        <p class="eyebrow">About Me</p>
+        <h2>Business strategy meets practical AI</h2>
+        <p class="lede">Colombian, based in Mallorca, Spain — with a background in Marketing, Advertising, UX, and digital strategy, now building toward AI consulting and integration.</p>
+      </div>
+      <div class="slide__col">
+        <ul class="highlight-list">
+          <li>
+            <span class="highlight-list__icon" aria-hidden="true">◆</span>
+            <div><strong>Strategy background</strong><p>Branding, UX, customer experience, and digital transformation across real estate, e-commerce, and consumer projects.</p></div>
+          </li>
+          <li>
+            <span class="highlight-list__icon" aria-hidden="true">◆</span>
+            <div><strong>AI transition</strong><p>Currently studying AI Consulting &amp; Integration at Ironhack, translating business problems into working systems.</p></div>
+          </li>
+          <li>
+            <span class="highlight-list__icon" aria-hidden="true">◆</span>
+            <div><strong>Builder mindset</strong><p>Interested in AI systems that solve real business problems — not demos for their own sake.</p></div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. ELEVATOR PITCH -->
+  <section class="slide" id="slide-3" data-title="Elevator Pitch" aria-label="Project elevator pitch">
+    <div class="slide__inner">
+      <p class="eyebrow">Project Elevator Pitch</p>
+      <h2>Company research should take minutes, not hours</h2>
+      <p class="lede">Analysts and decision-makers manually search filings, financial sources, and company information. Relevant evidence is scattered and hard to trace back to its source.</p>
+      <blockquote class="pitch-quote">
+        An autonomous research pipeline that transforms authoritative company data into structured evidence, ready for business analysis and automation.
+      </blockquote>
+    </div>
+  </section>
+
+  <!-- 4. HOW IT WORKS -->
+  <section class="slide slide--wide" id="slide-4" data-title="How It Works" aria-label="How the project works">
+    <div class="slide__inner">
+      <p class="eyebrow">How It Works</p>
+      <h2>One question. One orchestrated research flow.</h2>
+      <div class="flow" role="list">
+        <div class="flow__group" data-group="input">
+          <span class="flow__group-label">Input</span>
+          <div class="flow__node" role="listitem">Business Question</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node" role="listitem">n8n / CLI Input</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node flow__node--accent" role="listitem">LangGraph Orchestration</div>
+        </div>
+        <div class="flow__group" data-group="ingestion">
+          <span class="flow__group-label">Ingestion Flow</span>
+          <div class="flow__node" role="listitem">Company Resolution</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node" role="listitem">SEC EDGAR</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node" role="listitem">Filing Collection</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node" role="listitem">Normalization</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node" role="listitem">Chunking</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node" role="listitem">OpenAI Embeddings</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node" role="listitem">Pinecone Vector Index</div>
+        </div>
+        <div class="flow__group" data-group="query">
+          <span class="flow__group-label">Research / Query Flow</span>
+          <div class="flow__node" role="listitem">Semantic Retrieval</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node" role="listitem">Evidence Assembly</div>
+        </div>
+        <div class="flow__group" data-group="output">
+          <span class="flow__group-label">Output / Automation Flow</span>
+          <div class="flow__node" role="listitem">Deterministic JSON Output</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node" role="listitem">n8n Automation</div>
+          <div class="flow__arrow" aria-hidden="true">↓</div>
+          <div class="flow__node flow__node--accent" role="listitem">Executive Report / Business Insight</div>
+        </div>
+      </div>
+      <p class="slide-footnote">LangGraph coordinates the process while each service keeps a single, testable responsibility.</p>
+    </div>
+  </section>
+
+  <!-- 5. TECHNICAL CHALLENGE -->
+  <section class="slide" id="slide-5" data-title="Technical Challenge" aria-label="Technical challenge">
+    <div class="slide__inner slide__inner--split">
+      <div class="slide__col">
+        <p class="eyebrow">Technical Challenge</p>
+        <h2>The hardest part was not calling an API</h2>
+        <p class="lede">The real difficulty was keeping a contract-driven pipeline consistent across SEC documents, chunking, embeddings, vector metadata, Pinecone, and LangGraph state.</p>
+        <p>A chunk's <code class="inline-token">text_id</code> had to survive vector preparation exactly. A string-normalization step was silently modifying it, which broke the downstream vector-preparation contract. The fix preserved <code class="inline-token">text_id</code> verbatim while keeping every other metadata validation rule intact.</p>
+        <p class="slide-footnote">Focused regression tests were added and the complete suite remained green.</p>
+      </div>
+      <div class="slide__col">
+        <div class="mini-flow" role="list">
+          <div class="mini-flow__node" role="listitem">Original chunk</div>
+          <div class="mini-flow__arrow" aria-hidden="true">→</div>
+          <div class="mini-flow__node" role="listitem">metadata</div>
+          <div class="mini-flow__arrow" aria-hidden="true">→</div>
+          <div class="mini-flow__node" role="listitem">embedding</div>
+          <div class="mini-flow__arrow" aria-hidden="true">→</div>
+          <div class="mini-flow__node" role="listitem">prepared vector</div>
+          <div class="mini-flow__arrow" aria-hidden="true">→</div>
+          <div class="mini-flow__node mini-flow__node--accent" role="listitem">Pinecone</div>
+        </div>
+        <blockquote class="pitch-quote pitch-quote--compact">Small metadata changes can break an entire RAG pipeline.</blockquote>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. BIGGEST MISTAKE -->
+  <section class="slide" id="slide-6" data-title="Biggest Mistake" aria-label="Biggest mistake">
+    <div class="slide__inner">
+      <p class="eyebrow">Biggest Mistake</p>
+      <h2>I built too much before validating the full live path</h2>
+      <p class="lede">The architecture and individual services became highly detailed and heavily tested — but live provider credentials, infrastructure, and full end-to-end execution should have been validated earlier. That surfaced environment and integration issues later than it should have.</p>
+      <div class="compare">
+        <div class="compare__col compare__col--before">
+          <span class="compare__label">Before</span>
+          <ol>
+            <li>Design every layer</li>
+            <li>Build every service</li>
+            <li>Test everything</li>
+            <li>Connect live providers later</li>
+          </ol>
+        </div>
+        <div class="compare__col compare__col--after">
+          <span class="compare__label">Better approach</span>
+          <ol>
+            <li>Connect one real provider</li>
+            <li>Validate one complete vertical slice</li>
+            <li>Expand safely</li>
+            <li>Automate</li>
+          </ol>
+        </div>
+      </div>
+      <blockquote class="pitch-quote">Architecture matters, but the first working vertical slice matters more.</blockquote>
+    </div>
+  </section>
+
+  <!-- 7. RESULTS -->
+  <section class="slide slide--wide" id="slide-7" data-title="Results" aria-label="Current results and progress">
+    <div class="slide__inner">
+      <p class="eyebrow">Results and Current Progress</p>
+      <h2>The core pipeline is already real</h2>
+      <div class="metrics">
+        <div class="metric-card"><span class="metric-card__value">1</span><span class="metric-card__label">SEC 10-K ingested</span></div>
+        <div class="metric-card"><span class="metric-card__value">245</span><span class="metric-card__label">document chunks</span></div>
+        <div class="metric-card"><span class="metric-card__value">245</span><span class="metric-card__label">vectors indexed</span></div>
+        <div class="metric-card"><span class="metric-card__value">245</span><span class="metric-card__label">vectors accepted by Pinecone</span></div>
+        <div class="metric-card metric-card--accent"><span class="metric-card__value">500</span><span class="metric-card__label">automated tests passing</span></div>
+      </div>
+      <div class="progress-columns">
+        <div class="progress-columns__col">
+          <span class="progress-columns__label progress-columns__label--done">Completed</span>
+          <ul class="check-list">
+            <li>Project foundation &amp; provider clients</li>
+            <li>SEC ingestion, normalization &amp; chunking</li>
+            <li>OpenAI embeddings &amp; Pinecone indexing</li>
+            <li>LangGraph workflow &amp; RAG retrieval services</li>
+            <li>Evidence assembly &amp; deterministic JSON output</li>
+            <li>n8n executable adapter</li>
+          </ul>
+        </div>
+        <div class="progress-columns__col">
+          <span class="progress-columns__label progress-columns__label--wip">Current Work</span>
+          <ul class="check-list check-list--wip">
+            <li>Stabilizing live provider execution in the Windows environment</li>
+            <li>Validating live retrieval and evidence count</li>
+            <li>Building the visual n8n workflow</li>
+            <li>Preparing executive report output and final demo</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. DEMO -->
+  <section class="slide slide--demo" id="slide-8" data-title="Demo" aria-label="Demo">
+    <div class="slide__inner">
+      <p class="eyebrow">Live Demonstration</p>
+      <h2 class="demo-word">DEMO</h2>
+      <div class="demo-actions">
+        <a class="btn btn--primary" href="LIVE_DEMO_URL" target="_blank" rel="noopener">Open Live Demo</a>
+        <a class="btn btn--secondary" href="https://github.com/felipevalenta-marketing/autonomous-company-research-agent" target="_blank" rel="noopener">View GitHub Repository</a>
+      </div>
+      <ol class="demo-sequence">
+        <li>Show the Pinecone index with 245 records.</li>
+        <li>Run the explicit canonical-company workflow.</li>
+        <li>Show the LangGraph research flow.</li>
+        <li>Show the resulting structured JSON / evidence output.</li>
+        <li>Show the n8n automation handoff, if available.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 9. CLOSING -->
+  <section class="slide slide--hero slide--closing" id="slide-9" data-title="Closing" aria-label="Closing">
+    <div class="slide__inner">
+      <h2 class="closing-title">Autonomous Company Research Agent</h2>
+      <p class="closing-name">Carlos Felipe Valencia</p>
+      <p class="closing-thanks">Thank You</p>
+      <p class="closing-line">Turning authoritative data into business-ready intelligence.</p>
+      <div class="closing-links">
+        <a href="https://github.com/felipevalenta-marketing/autonomous-company-research-agent" target="_blank" rel="noopener">GitHub</a>
+        <a href="LINKEDIN_URL" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="LIVE_DEMO_URL" target="_blank" rel="noopener">Project Demo</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>

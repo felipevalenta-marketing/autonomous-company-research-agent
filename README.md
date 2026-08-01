@@ -22,6 +22,7 @@ This project is the foundation for an autonomous company research system that wi
 - Embedded chunks can now be converted into deterministic prepared vector records through the existing vector-preparation boundary; prepared vectors can then flow through the existing vector-indexing boundary before Pinecone.
 - The repository also includes an offline-testable RAG ingestion orchestration service that runs document chunking, chunk embedding, vector preparation, and vector indexing in order; retrieval remains a separate service.
 - The repository also includes a minimal LangGraph workflow foundation that initializes a research request, resolves the company, validates the result, and routes to completion or failure without connecting provider collection, RAG, evidence assembly, or report generation yet.
+- The repository also includes a bounded SEC-to-RAG seed ingestion adapter for one company and one filing type so the Pinecone index can be populated for demo preparation.
 - The broader recursive chunking path remains a later-stage RAG concern.
 
 ## Current Folder Structure
@@ -125,6 +126,26 @@ python -m app.n8n_runner --company "Apple Inc." --query "Analyze the company’s
 ```
 
 The command uses the existing environment configuration documented above, writes the JSON payload to stdout on success, and writes safe errors to stderr with a nonzero exit code on failure. A self-hosted n8n workflow can invoke it with the Execute Command node.
+
+### Explicit company override
+
+SEC remains the default company-resolution path. For development or demo runs where a canonical company identity is already known, you can provide both the resolved ticker and CIK explicitly so the workflow skips only the remote SEC ticker lookup.
+
+Both `--resolved-ticker` and `--resolved-cik` must be supplied together. The override does not replace SEC ingestion, retrieval, or evidence assembly.
+
+```powershell
+python -m app.n8n_runner --company "Apple Inc." --resolved-ticker "AAPL" --resolved-cik "0000320193" --query "Analyze the company's recent financial performance and strategic risks" --top-k 5 --max-evidence 3
+```
+
+## SEC Seed Ingestion
+
+Run the bounded seed-ingestion adapter with:
+
+```powershell
+python -m app.rag_ingestion_runner --company "Apple Inc." --filing-type "10-K" --limit 1
+```
+
+It uses the configured SEC, OpenAI embeddings, and Pinecone services to seed the existing Pinecone RAG index for demo preparation. The command is intentionally bounded to one company and one filing type, writes a compact JSON summary to stdout on success, and does not generate a report or execute n8n.
 
 ## Roadmap
 
