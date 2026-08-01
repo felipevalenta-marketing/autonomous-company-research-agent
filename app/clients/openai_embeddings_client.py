@@ -68,6 +68,11 @@ class OpenAIEmbeddingsClient:
         self._base_url = _normalize_base_url(base_url)
         self._default_model = _normalize_model(default_model)
 
+    def close(self) -> None:
+        """Close the underlying HTTP client."""
+
+        self._http_client.close()
+
     def create_embeddings(
         self,
         texts: str | Sequence[str],

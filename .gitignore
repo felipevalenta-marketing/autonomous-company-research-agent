@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 .venv/
 venv/
 __pycache__/
@@ -16,6 +18,9 @@ reports/*
 !docs/.gitkeep
 n8n/*
 !n8n/.gitkeep
+!n8n/README.md
+!n8n/workflows/
+!n8n/workflows/*.workflow.ts
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*

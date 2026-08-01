@@ -1,0 +1,484 @@
+"""Unit tests for the public HTTP adapter."""
+
+from __future__ import annotations
+
+import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from starlette.testclient import TestClient
+
+from app.api import create_app
+from app.clients.sec_client import SecTransportError
+from app.models.company import ResolvedCompany
+from app.services.evidence_assembly_service import EvidenceBundle, RAGEvidenceRecord
+from app.services.workflow_integration_service import run_completed_workflow
+from app.services.workflow_output_service import WorkflowOutput, build_workflow_output
+from app.settings import Settings
+
+
+class RecordingWorkflow:
+    def __init__(self, result: object | None = None, error: Exception | None = None) -> None:
+        self.result = result
+        self.error = error
+        self.calls: list[dict[str, object]] = []
+
+    def invoke(self, state: dict[str, object]) -> object:
+        self.calls.append(dict(state))
+        if self.error is not None:
+            raise self.error
+        if self.result is None:
+            raise AssertionError("workflow result was not configured.")
+        return self.result
+
+
+class RecordingClosableClient:
+    def __init__(self) -> None:
+        self.close_count = 0
+
+    def close(self) -> None:
+        self.close_count += 1
+
+
+class ApiTests(unittest.TestCase):
+    def _build_settings(self, *, api_key: str = "secret") -> Settings:
+        return Settings(
+            agent_api_key=api_key,
+            openai_api_key="demo",
+            openai_base_url="https://api.openai.com/v1",
+            openai_embedding_model="text-embedding-3-small",
+            pinecone_api_key="demo",
+            pinecone_index_name="index",
+            pinecone_index_host="https://example.com",
+            pinecone_namespace_prefix="company",
+            pinecone_vector_dimension="3",
+            pinecone_api_version=None,
+            pinecone_max_upsert_batch_size="10",
+            pinecone_max_query_top_k="5",
+            tavily_api_key=None,
+            news_api_key=None,
+            alpha_vantage_api_key=None,
+            sec_user_agent="Example App (dev@example.com)",
+        )
+
+    def _build_workflow_output(self) -> WorkflowOutput:
+        company = ResolvedCompany(company_name="Apple Inc.", ticker="AAPL", cik="0000320193")
+        evidence = RAGEvidenceRecord(
+            result_id="result-1",
+            query="Analyze the company's recent financial performance and strategic risks",
+            company_name="Apple Inc.",
+            source_id="source-1",
+            document_id="doc-1",
+            chunk_id="chunk-1",
+            text="Relevant retrieved passage.",
+            similarity_score=0.92,
+            retrieval_scope="company:cik:0000320193",
+            source_url="https://example.com/doc",
+        )
+        bundle = EvidenceBundle(
+            query="Analyze the company's recent financial performance and strategic risks",
+            evidence_count=1,
+            evidence=(evidence,),
+            source_count=1,
+            document_count=1,
+        )
+        return WorkflowOutput(
+            research_query="Analyze the company's recent financial performance and strategic risks",
+            resolved_company=company,
+            evidence_bundle=bundle,
+        )
+
+    def _build_success_dependencies(self, *, workflow: RecordingWorkflow, cleanup_clients: tuple[RecordingClosableClient, ...] = ()) -> SimpleNamespace:
+        def cleanup() -> None:
+            for client in cleanup_clients:
+                client.close()
+
+        return SimpleNamespace(
+            workflow=workflow,
+            build_workflow_output=build_workflow_output,
+            run_completed_workflow=run_completed_workflow,
+            cleanup=cleanup,
+        )
+
+    def test_health_returns_ok_and_does_not_construct_provider_clients(self) -> None:
+        factory_called = {"count": 0}
+
+        def failing_factory(*args, **kwargs):  # noqa: ANN002, ANN003
+            factory_called["count"] += 1
+            raise AssertionError("health must not construct provider clients.")
+
+        app = create_app(
+            settings_loader=lambda: self._build_settings(),
+            dependencies_factory=failing_factory,
+        )
+
+        with TestClient(app) as client:
+            response = client.get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok", "service": "autonomous-company-research-agent"})
+        self.assertEqual(factory_called["count"], 0)
+
+    def test_missing_api_key_is_rejected(self) -> None:
+        app = create_app(settings_loader=lambda: self._build_settings())
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "UNAUTHORIZED",
+                "message": "Invalid API credentials.",
+            },
+        )
+
+    def test_invalid_api_key_is_rejected(self) -> None:
+        app = create_app(settings_loader=lambda: self._build_settings())
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "wrong"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "UNAUTHORIZED",
+                "message": "Invalid API credentials.",
+            },
+        )
+
+    def test_invalid_company_input_returns_400(self) -> None:
+        app = create_app(settings_loader=lambda: self._build_settings())
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "  ",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "INVALID_RESEARCH_REQUEST",
+                "message": "Company, ticker, CIK and research query are required.",
+            },
+        )
+
+    def test_invalid_ticker_input_returns_400(self) -> None:
+        app = create_app(settings_loader=lambda: self._build_settings())
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "INVALID_RESEARCH_REQUEST",
+                "message": "Company, ticker, CIK and research query are required.",
+            },
+        )
+
+    def test_invalid_cik_input_returns_400(self) -> None:
+        app = create_app(settings_loader=lambda: self._build_settings())
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "abc",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "INVALID_RESEARCH_REQUEST",
+                "message": "Company, ticker, CIK and research query are required.",
+            },
+        )
+
+    def test_invalid_query_input_returns_400(self) -> None:
+        app = create_app(settings_loader=lambda: self._build_settings())
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": " ",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "INVALID_RESEARCH_REQUEST",
+                "message": "Company, ticker, CIK and research query are required.",
+            },
+        )
+
+    def test_valid_request_builds_canonical_override_arguments(self) -> None:
+        captured: dict[str, object] = {}
+
+        def factory(settings, **kwargs):  # noqa: ANN001, ANN003
+            captured["settings"] = settings
+            captured["kwargs"] = dict(kwargs)
+            workflow = RecordingWorkflow(
+                result={
+                    "research_query": "Analyze the company's recent financial performance and strategic risks",
+                    "resolved_company": ResolvedCompany(company_name="Apple Inc.", ticker="AAPL", cik="0000320193"),
+                    "evidence_bundle": self._build_workflow_output().evidence_bundle,
+                    "workflow_status": "completed",
+                    "current_stage": "completed",
+                    "errors": (),
+                }
+            )
+            return self._build_success_dependencies(workflow=workflow)
+
+        app = create_app(settings_loader=lambda: self._build_settings(), dependencies_factory=factory)
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": " Apple Inc. ",
+                    "ticker": "aapl",
+                    "cik": "320193",
+                    "query": " Analyze the company's recent financial performance and strategic risks ",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(captured["kwargs"], {"company": "Apple Inc.", "resolved_ticker": "AAPL", "resolved_cik": "0000320193"})
+        self.assertIsInstance(captured["settings"], Settings)
+
+    def test_valid_successful_workflow_returns_existing_success_contract(self) -> None:
+        workflow_output = self._build_workflow_output()
+        workflow = RecordingWorkflow(
+            result={
+                "research_query": workflow_output.research_query,
+                "resolved_company": workflow_output.resolved_company,
+                "evidence_bundle": workflow_output.evidence_bundle,
+                "workflow_status": "completed",
+                "current_stage": "completed",
+                "errors": (),
+            }
+        )
+        dependencies = self._build_success_dependencies(workflow=workflow)
+
+        app = create_app(
+            settings_loader=lambda: self._build_settings(),
+            dependencies_factory=lambda settings, **kwargs: dependencies,  # noqa: ARG005
+        )
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), run_completed_workflow(workflow_output))
+        self.assertEqual(
+            workflow.calls,
+            [
+                {
+                    "research_query": "Analyze the company's recent financial performance and strategic risks",
+                    "company_input": "Apple Inc.",
+                }
+            ],
+        )
+
+    def test_provider_failure_returns_safe_502_and_hides_details(self) -> None:
+        workflow = RecordingWorkflow(error=SecTransportError("secret provider detail"))
+        app = create_app(
+            settings_loader=lambda: self._build_settings(),
+            dependencies_factory=lambda settings, **kwargs: SimpleNamespace(  # noqa: ARG005
+                workflow=workflow,
+                build_workflow_output=build_workflow_output,
+                run_completed_workflow=run_completed_workflow,
+                cleanup=lambda: None,
+            ),
+        )
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "RESEARCH_RETRIEVAL_FAILED",
+                "message": "Research retrieval failed.",
+            },
+        )
+        self.assertNotIn("secret provider detail", response.text)
+
+    def test_unexpected_failure_returns_safe_500_and_hides_details(self) -> None:
+        def factory(settings, **kwargs):  # noqa: ANN001, ANN003
+            raise RuntimeError("unexpected secret detail")
+
+        app = create_app(settings_loader=lambda: self._build_settings(), dependencies_factory=factory)
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "INTERNAL_RESEARCH_ERROR",
+                "message": "The research workflow could not be completed.",
+            },
+        )
+        self.assertNotIn("unexpected secret detail", response.text)
+
+    def test_clients_close_exactly_once_on_success(self) -> None:
+        workflow_output = self._build_workflow_output()
+        workflow = RecordingWorkflow(
+            result={
+                "research_query": workflow_output.research_query,
+                "resolved_company": workflow_output.resolved_company,
+                "evidence_bundle": workflow_output.evidence_bundle,
+                "workflow_status": "completed",
+                "current_stage": "completed",
+                "errors": (),
+            }
+        )
+        first_client = RecordingClosableClient()
+        second_client = RecordingClosableClient()
+        dependencies = self._build_success_dependencies(workflow=workflow, cleanup_clients=(first_client, second_client))
+
+        app = create_app(
+            settings_loader=lambda: self._build_settings(),
+            dependencies_factory=lambda settings, **kwargs: dependencies,  # noqa: ARG005
+        )
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(first_client.close_count, 1)
+        self.assertEqual(second_client.close_count, 1)
+
+    def test_clients_close_exactly_once_on_failure(self) -> None:
+        first_client = RecordingClosableClient()
+        second_client = RecordingClosableClient()
+        workflow = RecordingWorkflow(error=RuntimeError("boom"))
+
+        def factory(settings, **kwargs):  # noqa: ANN001, ANN003
+            return SimpleNamespace(
+                workflow=workflow,
+                build_workflow_output=build_workflow_output,
+                run_completed_workflow=run_completed_workflow,
+                cleanup=lambda: (first_client.close(), second_client.close()),
+            )
+
+        app = create_app(settings_loader=lambda: self._build_settings(), dependencies_factory=factory)
+
+        with TestClient(app) as client:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(first_client.close_count, 1)
+        self.assertEqual(second_client.close_count, 1)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    unittest.main()

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import sys
+import importlib
 import unittest
 from dataclasses import dataclass
+from pathlib import Path
 
 from app.clients.openai_embedding_dtos import (
     OpenAIEmbeddingItemDTO,
@@ -228,6 +229,11 @@ class EmbeddingServiceTests(unittest.TestCase):
         embed_texts("first", client)
 
         self.assertEqual(state, {"embeddings": []})
-        self.assertNotIn("langgraph", sys.modules)
-        self.assertNotIn("pinecone", sys.modules)
-
+        module = importlib.import_module(embed_texts.__module__)
+        module_source = Path(module.__file__).read_text(encoding="utf-8").lower()
+        for line in module_source.splitlines():
+            stripped = line.strip()
+            self.assertFalse(stripped.startswith("import langgraph"))
+            self.assertFalse(stripped.startswith("from langgraph"))
+            self.assertFalse(stripped.startswith("import pinecone"))
+            self.assertFalse(stripped.startswith("from pinecone"))

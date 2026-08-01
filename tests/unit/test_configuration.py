@@ -77,7 +77,11 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(settings.sec_user_agent, "Example App (dev@example.com)")
 
     def test_missing_env_vars_do_not_fail(self) -> None:
-        with patch.dict(os.environ, {}, clear=True):
+        with patch("app.settings.load_dotenv", return_value=False), patch.dict(
+            os.environ,
+            {},
+            clear=True,
+        ):
             settings = load_settings()
 
         self.assertIsInstance(settings, Settings)

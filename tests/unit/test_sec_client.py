@@ -30,6 +30,121 @@ class SecClientTests(unittest.TestCase):
         runtime_config = RuntimeConfig(sec_user_agent=sec_user_agent, max_retries=max_retries)
         return SecClient(runtime_config=runtime_config, http_client=http_client)
 
+    def test_successful_request_uses_single_attempt(self) -> None:
+        calls = {"count": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["count"] += 1
+            return httpx.Response(200, json={"0": {"cik_str": 320193, "ticker": "AAPL", "title": "Apple Inc."}})
+
+        client = self._build_client(handler)
+
+        client.get_company_tickers()
+
+        self.assertEqual(calls["count"], 1)
+
+    def test_max_retries_zero_results_in_single_attempt(self) -> None:
+        calls = {"count": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["count"] += 1
+            raise httpx.ConnectError("temporary failure", request=request)
+
+        client = self._build_client(handler, max_retries=0)
+
+        with self.assertRaises(SecTransportError) as context:
+            client.get_company_tickers()
+
+        self.assertEqual(calls["count"], 1)
+        self.assertIsInstance(context.exception.__cause__, httpx.ConnectError)
+
+    def test_transient_transport_failure_is_retried_once(self) -> None:
+        calls = {"count": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise httpx.ConnectError("temporary failure", request=request)
+            return httpx.Response(200, json={"0": {"cik_str": 320193, "ticker": "AAPL", "title": "Apple Inc."}})
+
+        client = self._build_client(handler, max_retries=1)
+
+        records = client.get_company_tickers()
+
+        self.assertEqual(calls["count"], 2)
+        self.assertEqual(records[0].ticker, "AAPL")
+
+    def test_repeated_transport_failure_raises_after_retry(self) -> None:
+        calls = {"count": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["count"] += 1
+            raise httpx.ConnectError("temporary failure", request=request)
+
+        client = self._build_client(handler, max_retries=1)
+
+        with self.assertRaisesRegex(SecTransportError, "SEC request failed after retry\\."):
+            client.get_company_tickers()
+
+        self.assertEqual(calls["count"], 2)
+
+    def test_max_retries_three_results_in_four_attempts(self) -> None:
+        calls = {"count": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["count"] += 1
+            raise httpx.ConnectError("temporary failure", request=request)
+
+        client = self._build_client(handler, max_retries=3)
+
+        with self.assertRaises(SecTransportError) as context:
+            client.get_company_tickers()
+
+        self.assertEqual(calls["count"], 4)
+        self.assertIsInstance(context.exception.__cause__, httpx.ConnectError)
+
+    def test_configuration_errors_are_not_retried(self) -> None:
+        calls = {"count": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["count"] += 1
+            return httpx.Response(200, json={})
+
+        client = self._build_client(handler, sec_user_agent=None)
+
+        with self.assertRaises(SecConfigurationError):
+            client.get_company_tickers()
+
+        self.assertEqual(calls["count"], 0)
+
+    def test_http_status_errors_are_not_retried(self) -> None:
+        calls = {"count": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["count"] += 1
+            return httpx.Response(500, text="server error")
+
+        client = self._build_client(handler)
+
+        with self.assertRaises(SecTransportError):
+            client.get_company_tickers()
+
+        self.assertEqual(calls["count"], 1)
+
+    def test_payload_validation_errors_are_not_retried(self) -> None:
+        calls = {"count": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls["count"] += 1
+            return httpx.Response(200, json=["invalid"])
+
+        client = self._build_client(handler)
+
+        with self.assertRaises(SecResponseValidationError):
+            client.get_company_tickers()
+
+        self.assertEqual(calls["count"], 1)
+
     def test_valid_ticker_payload_is_mapped_to_dtos(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             self.assertEqual(request.url.path, "/files/company_tickers.json")
@@ -83,8 +198,10 @@ class SecClientTests(unittest.TestCase):
 
         client = self._build_client(handler)
 
-        with self.assertRaises(SecTimeoutError):
+        with self.assertRaises(SecTimeoutError) as context:
             client.get_company_tickers()
+
+        self.assertIsInstance(context.exception.__cause__, httpx.ReadTimeout)
 
     def test_rate_limit_response_raises_rate_limit_error(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:

@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 from app.config.constants import (
     ALPHA_VANTAGE_API_KEY_ENV,
+    AGENT_API_KEY_ENV,
     OPENAI_BASE_URL_ENV,
     OPENAI_EMBEDDING_MODEL_ENV,
     NEWS_API_KEY_ENV,
@@ -28,6 +29,7 @@ from app.config.constants import (
 class Settings:
     """Immutable environment settings."""
 
+    agent_api_key: str | None = None
     openai_api_key: str | None = None
     openai_base_url: str | None = None
     openai_embedding_model: str | None = None
@@ -49,6 +51,7 @@ def load_settings() -> Settings:
     """Load settings from environment variables and the local `.env` file."""
     load_dotenv()
     return Settings(
+        agent_api_key=os.getenv(AGENT_API_KEY_ENV),
         openai_api_key=os.getenv(OPENAI_API_KEY_ENV),
         openai_base_url=os.getenv(OPENAI_BASE_URL_ENV),
         openai_embedding_model=os.getenv(OPENAI_EMBEDDING_MODEL_ENV),

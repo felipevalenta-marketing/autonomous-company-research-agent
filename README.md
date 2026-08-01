@@ -110,6 +110,154 @@ For Tavily provider calls, set `TAVILY_API_KEY`; the MVP uses only the `/search`
 For OpenAI embeddings, set `OPENAI_API_KEY` and optionally override `OPENAI_BASE_URL` or `OPENAI_EMBEDDING_MODEL` if needed; this stage only prepares embeddings and does not include text generation.
 For Pinecone vector operations, set `PINECONE_API_KEY`, `PINECONE_INDEX_HOST`, `PINECONE_NAMESPACE_PREFIX`, `PINECONE_VECTOR_DIMENSION`, and optional bounds such as `PINECONE_API_VERSION`, `PINECONE_MAX_UPSERT_BATCH_SIZE`, and `PINECONE_MAX_QUERY_TOP_K`. The index must already exist, namespaces are company-scoped and deterministic, and upsert/delete acknowledgements are eventually consistent rather than immediately query-visible.
 
+## HTTP API
+
+The repository now exposes the existing research workflow through a small ASGI adapter for n8n and other HTTPS callers. It reuses the same application services, workflow output validation, and serialization contract already used by the CLI runner.
+
+Start the API locally with:
+
+```powershell
+python -m uvicorn app.api:app --host 0.0.0.0 --port 8000
+```
+
+### Health check
+
+```powershell
+GET /health
+```
+
+Example response:
+
+```json
+{
+  "status": "ok",
+  "service": "autonomous-company-research-agent"
+}
+```
+
+### Research request
+
+`POST /research` requires the `X-API-Key` header and a JSON body with `company`, `ticker`, `cik`, and `query`.
+
+Example request:
+
+```powershell
+POST /research
+X-API-Key: $AGENT_API_KEY
+Content-Type: application/json
+
+{
+  "company": "Apple Inc.",
+  "ticker": "AAPL",
+  "cik": "0000320193",
+  "query": "Analyze the company's recent financial performance and strategic risks"
+}
+```
+
+The successful response is the approved serialized `WorkflowOutput` contract and keeps the top-level keys:
+
+```json
+{
+  "research_query": "...",
+  "resolved_company": {
+    "company_name": "...",
+    "ticker": "...",
+    "cik": "..."
+  },
+  "evidence_bundle": {
+    "...": "..."
+  }
+}
+```
+
+Safe failure responses are deterministic JSON objects:
+
+```json
+{
+  "status": "failed",
+  "error_code": "INVALID_RESEARCH_REQUEST",
+  "message": "Company, ticker, CIK and research query are required."
+}
+```
+
+```json
+{
+  "status": "failed",
+  "error_code": "UNAUTHORIZED",
+  "message": "Invalid API credentials."
+}
+```
+
+```json
+{
+  "status": "failed",
+  "error_code": "RESEARCH_RETRIEVAL_FAILED",
+  "message": "Research retrieval failed."
+}
+```
+
+```json
+{
+  "status": "failed",
+  "error_code": "INTERNAL_RESEARCH_ERROR",
+  "message": "The research workflow could not be completed."
+}
+```
+
+### How n8n calls it
+
+n8n should send `POST /research` with `X-API-Key` and the same canonical request body used by the API. The workflow should point to this adapter over public HTTPS and treat the 200 response as the final research result.
+
+### Deployment notes
+
+The API is synchronous at the workflow boundary, but the ASGI route safely offloads the synchronous execution path to a worker thread. Deploy it behind a standard ASGI server such as Uvicorn and provide the production `AGENT_API_KEY`, OpenAI, Pinecone, and SEC environment values required by the existing research stack.
+
+## Railway Deployment
+
+1. Push the repository to GitHub.
+2. Create a Railway project.
+3. Deploy from the GitHub repository.
+4. Railway should detect the `Dockerfile` automatically.
+5. Add the required environment variables in Railway.
+6. Generate a public domain.
+7. Verify `GET /health`.
+8. Verify authenticated `POST /research`.
+9. Connect the public URL to n8n.
+10. Never upload `.env`.
+
+Required Railway variables:
+
+- `AGENT_API_KEY`
+- `OPENAI_API_KEY`
+- `OPENAI_BASE_URL`
+- `OPENAI_EMBEDDING_MODEL`
+- `PINECONE_API_KEY`
+- `PINECONE_INDEX_NAME`
+- `PINECONE_INDEX_HOST`
+- `PINECONE_NAMESPACE_PREFIX`
+- `PINECONE_VECTOR_DIMENSION`
+- `PINECONE_API_VERSION`
+- `PINECONE_MAX_UPSERT_BATCH_SIZE`
+- `PINECONE_MAX_QUERY_TOP_K`
+- `SEC_USER_AGENT`
+
+Example health check:
+
+```bash
+curl https://YOUR-DOMAIN/health
+```
+
+Example research request:
+
+```bash
+curl -X POST https://YOUR-DOMAIN/research \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_AGENT_API_KEY" \
+  -d '{"company":"Apple Inc.","ticker":"AAPL","cik":"0000320193","query":"Analyze the company recent financial performance and strategic risks"}'
+```
+
+Railway supplies `PORT`, so it should not be added manually.
+
 ## Data Directories
 
 - `data/raw/`: original input documents.

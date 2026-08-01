@@ -29,6 +29,19 @@ class PineconeDtoTests(unittest.TestCase):
         self.assertEqual(record.values, (0.1, 0.2, 0.3))
         self.assertEqual(record.metadata["company_name"], "Apple")
 
+    def test_text_id_metadata_is_preserved_verbatim(self) -> None:
+        record = PineconeVectorRecordDTO(
+            record_id="vec-1",
+            values=(0.1, 0.2, 0.3),
+            metadata={
+                "text_id": "  alpha\nbeta\t  ",
+                "company_name": " Apple ",
+            },
+        )
+
+        self.assertEqual(record.metadata["text_id"], "  alpha\nbeta\t  ")
+        self.assertEqual(record.metadata["company_name"], "Apple")
+
     def test_blank_id_rejection(self) -> None:
         with self.assertRaises(ValueError):
             PineconeVectorRecordDTO(record_id=" ", values=(0.1,))
@@ -91,4 +104,3 @@ class PineconeDtoTests(unittest.TestCase):
     def test_upsert_and_delete_acknowledgements_are_serializable(self) -> None:
         json.dumps(asdict(PineconeUpsertResultDTO(namespace="company:cik:abc", upserted_count=2)))
         json.dumps(asdict(PineconeDeleteResultDTO(namespace="company:cik:abc", deleted_count=1)))
-

@@ -76,6 +76,11 @@ class SecClient:
         self._runtime_config = runtime_config
         self._http_client = http_client or httpx.Client()
 
+    def close(self) -> None:
+        """Close the underlying HTTP client."""
+
+        self._http_client.close()
+
     def get_company_tickers(self) -> tuple[SecTickerRecord, ...]:
         """Fetch validated company-ticker records from the SEC."""
         payload = self._fetch_json(SEC_COMPANY_TICKERS_URL)
@@ -118,11 +123,11 @@ class SecClient:
                 )
             except httpx.TimeoutException as exc:
                 if attempt + 1 >= attempts:
-                    raise SecTimeoutError("SEC request timed out.") from exc
+                    raise SecTimeoutError("SEC request timed out after retry.") from exc
                 continue
             except httpx.RequestError as exc:
                 if attempt + 1 >= attempts:
-                    raise SecTransportError("SEC request failed.") from exc
+                    raise SecTransportError("SEC request failed after retry.") from exc
                 continue
 
             if response.status_code == 429:
@@ -135,7 +140,7 @@ class SecClient:
 
             return self._decode_json(response)
 
-        raise SecTransportError("SEC request failed after retries.")
+        raise SecTransportError("SEC request failed after retry.")
 
     @staticmethod
     def _decode_json(response: httpx.Response) -> Any:

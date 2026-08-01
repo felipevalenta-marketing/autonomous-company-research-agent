@@ -170,6 +170,11 @@ def _normalize_metadata(metadata: Mapping[str, object]) -> dict[str, object]:
             raise VectorMetadataError("metadata keys must use the approved Pinecone contract.")
         if value is None:
             raise VectorMetadataError("metadata values must not be null.")
+        if normalized_key == "text_id":
+            if not isinstance(value, str):
+                raise VectorMetadataError("metadata values must be JSON-compatible scalars or flat lists.")
+            normalized[normalized_key] = value
+            continue
         if isinstance(value, Mapping):
             raise VectorMetadataError("metadata values must be JSON-compatible scalars or flat lists.")
         if isinstance(value, (list, tuple)):

@@ -200,6 +200,15 @@ class ChunkVectorPreparationServiceTests(unittest.TestCase):
         self.assertEqual([record.metadata["filing_form"] for record in prepared], ["10-K", "10-K"])
         self.assertEqual([record.metadata["source_url"] for record in prepared], ["https://example.com/doc", "https://example.com/doc"])
         self.assertEqual([record.metadata["filing_date"] for record in prepared], ["2024-01-01", "2024-01-01"])
+
+    def test_text_id_is_preserved_verbatim_through_preparation(self) -> None:
+        raw_text = "  alpha\nβeta\t  "
+        embedded = _build_embedded_chunk(text=raw_text)
+        dependency = CapturingVectorPreparationService()
+
+        prepared = prepare_chunk_vectors((embedded,), vector_preparation_service=dependency)
+
+        self.assertEqual(prepared[0].metadata["text_id"], raw_text)
         self.assertNotIn("vectors", prepared[0].metadata)
         self.assertNotIn("ticker", prepared[0].metadata)
         self.assertNotIn("cik", prepared[0].metadata)

@@ -31,7 +31,11 @@ def _normalize_vector(values: object) -> tuple[float, ...]:
     return tuple(normalized)
 
 
-def _normalize_metadata_value(value: object) -> object:
+def _normalize_metadata_value(value: object, *, key: str | None = None) -> object:
+    if key == "text_id":
+        if not isinstance(value, str):
+            raise ValueError("metadata values must be JSON-compatible scalars or flat lists.")
+        return value
     if value is None:
         raise ValueError("metadata values must not be null.")
     if isinstance(value, bool):
@@ -68,7 +72,7 @@ def _normalize_metadata(metadata: object) -> dict[str, object]:
         normalized_key = _require_text(key, "metadata key")
         if normalized_key in normalized:
             raise ValueError("metadata keys must be unique.")
-        normalized[normalized_key] = _normalize_metadata_value(value)
+        normalized[normalized_key] = _normalize_metadata_value(value, key=normalized_key)
     return normalized
 
 

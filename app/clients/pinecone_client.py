@@ -94,6 +94,11 @@ class PineconeClient:
         self._config = pinecone_config
         self._http_client = http_client or httpx.Client()
 
+    def close(self) -> None:
+        """Close the underlying HTTP client."""
+
+        self._http_client.close()
+
     def upsert(self, records: Sequence[PineconeVectorRecordDTO], namespace: str) -> PineconeUpsertResultDTO:
         """Upsert prepared vector records into a namespace."""
 

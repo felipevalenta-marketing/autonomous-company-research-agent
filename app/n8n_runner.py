@@ -11,6 +11,7 @@ from contextlib import ExitStack
 from dataclasses import dataclass
 from functools import partial
 from typing import Callable, Sequence
+from types import SimpleNamespace
 
 from app.clients.openai_embeddings_client import OpenAIEmbeddingsClient
 from app.clients.pinecone_client import PineconeClient
@@ -41,6 +42,28 @@ class _RunnerDependencies:
     build_workflow_output: Callable[[object], WorkflowOutput]
     run_completed_workflow: Callable[[WorkflowOutput], dict[str, object]]
     cleanup: Callable[[], None] | None = None
+
+
+def build_application_dependencies(
+    settings: Settings,
+    *,
+    company: str,
+    resolved_ticker: str,
+    resolved_cik: str,
+    top_k: int | None = None,
+    max_evidence: int | None = None,
+) -> _RunnerDependencies:
+    """Build the reusable application dependency set for HTTP or CLI entry points."""
+
+    args = SimpleNamespace(
+        company=company,
+        query="",
+        resolved_ticker=resolved_ticker,
+        resolved_cik=resolved_cik,
+        top_k=top_k,
+        max_evidence=max_evidence,
+    )
+    return _build_application_dependencies(settings, args)
 
 
 def main(

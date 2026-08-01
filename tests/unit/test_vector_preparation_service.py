@@ -127,18 +127,20 @@ class VectorPreparationServiceTests(unittest.TestCase):
                 expected_dimension=2,
             )
 
-    def test_metadata_sanitization(self) -> None:
+    def test_text_id_is_preserved_verbatim_and_other_metadata_is_normalized(self) -> None:
         result = prepare_pinecone_vectors(
             self._build_embedding_result(),
             ("doc-1", "doc-2"),
             (
-                {"text_id": ["chunk-1", "chunk-2"]},
-                {"text_id": ["chunk-3"]},
+                {"text_id": "  chunk-1\nline\t  ", "source_url": "  https://example.com/doc  "},
+                {"text_id": "chunk-2", "source_url": "https://example.org/doc"},
             ),
             expected_dimension=3,
         )
 
-        self.assertEqual(result[0].metadata["text_id"], ("chunk-1", "chunk-2"))
+        self.assertEqual(result[0].metadata["text_id"], "  chunk-1\nline\t  ")
+        self.assertEqual(result[0].metadata["source_url"], "https://example.com/doc")
+        self.assertEqual(result[1].metadata["text_id"], "chunk-2")
 
     def test_invalid_metadata_key_rejected(self) -> None:
         with self.assertRaises(VectorMetadataError):
