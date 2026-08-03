@@ -122,6 +122,24 @@ class ApiTests(unittest.TestCase):
             ),
         }
 
+    def _build_failed_generic_retrieval_state(self) -> dict[str, object]:
+        return {
+            "research_query": "Analyze the company's recent financial performance and strategic risks",
+            "company_input": "Apple Inc.",
+            "workflow_status": "failed",
+            "current_stage": "failed",
+            "errors": (
+                ResearchWorkflowError(
+                    code="RAGQueryError",
+                    message="Research retrieval failed.",
+                    details=(
+                        ("stage", "retrieving_research"),
+                        ("error_type", "RAGQueryResponseConsistencyError"),
+                    ),
+                ),
+            ),
+        }
+
     def test_health_returns_ok_and_does_not_construct_provider_clients(self) -> None:
         factory_called = {"count": 0}
 
@@ -591,6 +609,36 @@ class ApiTests(unittest.TestCase):
         self.assertNotIn("Analyze the company's recent financial performance and strategic risks", logs.records[0].getMessage())
         self.assertNotIn("secret", logs.records[0].getMessage())
         self.assertEqual(cleanup_client.close_count, 1)
+
+    def test_generic_retrieval_code_with_concrete_consistency_detail_logs_concrete_error_type(self) -> None:
+        workflow = RecordingWorkflow(result=self._build_failed_generic_retrieval_state())
+        app = create_app(
+            settings_loader=lambda: self._build_settings(),
+            dependencies_factory=lambda settings, **kwargs: SimpleNamespace(  # noqa: ARG005
+                workflow=workflow,
+                build_workflow_output=lambda state: self.fail("build_workflow_output must not run for retrieval failures."),
+                run_completed_workflow=run_completed_workflow,
+                cleanup=lambda: None,
+            ),
+        )
+
+        with TestClient(app) as client, self.assertLogs("app.api", level="WARNING") as logs:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            logs.records[0].getMessage(),
+            "research_request_failed stage=workflow_execution error_type=RAGQueryResponseConsistencyError cause_type=None response_status=502",
+        )
 
     def test_output_failure_with_retrieval_cause_returns_502_and_hides_details(self) -> None:
         app = create_app(

@@ -402,6 +402,7 @@ def _workflow_retrieval_failure(final_state: object) -> tuple[str, str | None] |
 
         stage = None
         cause_type = None
+        detail_error_type = None
         for detail in details:
             if not isinstance(detail, tuple) or len(detail) != 2:
                 continue
@@ -410,10 +411,17 @@ def _workflow_retrieval_failure(final_state: object) -> tuple[str, str | None] |
                 stage = "retrieving_research"
             elif key == "error_type" and isinstance(value, str):
                 normalized = value.strip()
+                if normalized:
+                    detail_error_type = normalized
                 if normalized and not normalized.startswith("RAG"):
                     cause_type = normalized
 
         if stage == "retrieving_research":
+            if code == "RAGQueryError" and detail_error_type in {
+                "RAGQueryResponseConsistencyError",
+                "RAGQueryNamespaceConsistencyError",
+            }:
+                return detail_error_type, None
             return str(code), cause_type
     return None
 

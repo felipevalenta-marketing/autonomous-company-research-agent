@@ -10,7 +10,12 @@ from pathlib import Path
 from app.clients.pinecone_dtos import PineconeQueryMatchDTO, PineconeQueryResponseDTO
 from app.models.company import ResolvedCompany
 from app.models.providers import RAGResult
-from app.rag.retrieval_service import RAGEmbeddingError, RAGQueryError as RetrievalRAGQueryError
+from app.rag.retrieval_service import (
+    RAGEmbeddingError,
+    RAGQueryError as RetrievalRAGQueryError,
+    RAGQueryNamespaceConsistencyError,
+    RAGQueryResponseConsistencyError,
+)
 from app.services.embedding_service import EmbeddingRecord, EmbeddingServiceError, EmbeddingServiceResult
 from app.services.rag_query_service import (
     RAGQueryConsistencyError,
@@ -300,6 +305,44 @@ class RagQueryServiceTests(unittest.TestCase):
                 top_k=4,
                 namespace_prefix="company",
             )
+
+    def test_retrieval_consistency_errors_pass_through_unchanged(self) -> None:
+        query = "Apple strategy?"
+        company = self._build_company()
+        embedding_service = FakeEmbeddingService(response=self._build_embedding_result(query))
+        retrieval_service = FakeRetrievalService(
+            exc=RAGQueryResponseConsistencyError("RAG Pinecone query returned an invalid response object.")
+        )
+
+        with self.assertRaises(RAGQueryResponseConsistencyError) as response_context:
+            query_company_rag(
+                query,
+                company,
+                embedding_service,
+                FakeVectorQueryService(response=PineconeQueryResponseDTO(matches=(), namespace=build_pinecone_namespace(company, "company"))),
+                top_k=4,
+                namespace_prefix="company",
+                retrieval_service=retrieval_service,
+            )
+
+        self.assertIsNone(response_context.exception.__cause__)
+
+        retrieval_service = FakeRetrievalService(
+            exc=RAGQueryNamespaceConsistencyError("RAG Pinecone query returned a mismatched namespace.")
+        )
+
+        with self.assertRaises(RAGQueryNamespaceConsistencyError) as namespace_context:
+            query_company_rag(
+                query,
+                company,
+                embedding_service,
+                FakeVectorQueryService(response=PineconeQueryResponseDTO(matches=(), namespace=build_pinecone_namespace(company, "company"))),
+                top_k=4,
+                namespace_prefix="company",
+                retrieval_service=retrieval_service,
+            )
+
+        self.assertIsNone(namespace_context.exception.__cause__)
 
     def test_malformed_retrieval_output_fails_safely(self) -> None:
         query = "Apple strategy?"
