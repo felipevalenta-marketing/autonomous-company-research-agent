@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hmac import compare_digest
+import os
 import logging
 from typing import Callable
 
@@ -30,9 +31,11 @@ from app.services.workflow_integration_service import (
 from app.services.workflow_output_service import WorkflowOutputError
 from app.services.workflow_output_service import build_workflow_output
 from app.settings import Settings, load_settings
+from app.utils.logging import configure_logging
 
 SERVICE_NAME = "autonomous-company-research-agent"
 _LOGGER = logging.getLogger(__name__)
+_LOGGER.propagate = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,12 +59,17 @@ def create_app(
 ) -> Starlette:
     """Create the ASGI application without constructing provider clients for health checks."""
 
+    configure_logging()
     settings = settings_loader()
 
     async def health(request: Request) -> JSONResponse:  # noqa: ARG001
         return JSONResponse({"status": "ok", "service": SERVICE_NAME}, status_code=200)
 
+    async def deployment_info(request: Request) -> JSONResponse:  # noqa: ARG001
+        return JSONResponse({"status": "ok", "service": SERVICE_NAME, "deployment": _deployment_metadata()}, status_code=200)
+
     async def research(request: Request) -> JSONResponse:
+        _log_research_request_received()
         if not _is_authorized(request.headers.get("X-API-Key"), settings.agent_api_key):
             return _unauthorized_response()
 
@@ -179,6 +187,7 @@ def create_app(
     app = Starlette(
         routes=[
             Route("/health", health, methods=["GET"]),
+            Route("/deployment-info", deployment_info, methods=["GET"]),
             Route("/research", research, methods=["POST"]),
         ]
     )
@@ -327,6 +336,44 @@ def _log_research_request_failure(
         cause_type or "None",
         response_status,
     )
+
+
+def _log_research_request_received() -> None:
+    metadata = _deployment_metadata()
+    _LOGGER.info(
+        "research_request_received route=/research service_name=%s environment=%s commit=%s",
+        metadata["service_name"],
+        metadata["environment"],
+        metadata["commit"],
+    )
+
+
+def _deployment_metadata() -> dict[str, str]:
+    service_name = _safe_env_value("RAILWAY_SERVICE_NAME", default="local")
+    environment = _safe_env_value("RAILWAY_ENVIRONMENT_NAME", default="local")
+    commit = _short_commit_sha(os.getenv("RAILWAY_GIT_COMMIT_SHA"))
+    return {
+        "service_name": service_name,
+        "environment": environment,
+        "commit": commit,
+    }
+
+
+def _safe_env_value(name: str, *, default: str) -> str:
+    value = os.getenv(name)
+    if not isinstance(value, str):
+        return default
+    normalized = value.strip()
+    return normalized or default
+
+
+def _short_commit_sha(value: str | None) -> str:
+    if not isinstance(value, str):
+        return "unknown"
+    normalized = value.strip()
+    if not normalized:
+        return "unknown"
+    return normalized[:8]
 
 
 def _workflow_retrieval_failure(final_state: object) -> tuple[str, str | None] | None:

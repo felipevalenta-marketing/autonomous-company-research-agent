@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import os
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -139,6 +141,57 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.json(), {"status": "ok", "service": "autonomous-company-research-agent"})
         self.assertEqual(factory_called["count"], 0)
 
+    def test_deployment_info_falls_back_safely_when_railway_variables_are_missing(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            app = create_app(settings_loader=lambda: self._build_settings())
+
+            with TestClient(app) as client:
+                response = client.get("/deployment-info")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "ok",
+                "service": "autonomous-company-research-agent",
+                "deployment": {
+                    "service_name": "local",
+                    "environment": "local",
+                    "commit": "unknown",
+                },
+            },
+        )
+
+    def test_deployment_info_truncates_commit_sha_and_hides_full_value(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "RAILWAY_SERVICE_NAME": "production-service",
+                "RAILWAY_ENVIRONMENT_NAME": "production",
+                "RAILWAY_GIT_COMMIT_SHA": "1234567890abcdef1234567890abcdef12345678",
+            },
+            clear=True,
+        ):
+            app = create_app(settings_loader=lambda: self._build_settings())
+
+            with TestClient(app) as client:
+                response = client.get("/deployment-info")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "ok",
+                "service": "autonomous-company-research-agent",
+                "deployment": {
+                    "service_name": "production-service",
+                    "environment": "production",
+                    "commit": "12345678",
+                },
+            },
+        )
+        self.assertNotIn("1234567890abcdef1234567890abcdef12345678", response.text)
+
     def test_missing_api_key_is_rejected(self) -> None:
         app = create_app(settings_loader=lambda: self._build_settings())
 
@@ -187,6 +240,64 @@ class ApiTests(unittest.TestCase):
                 "message": "Invalid API credentials.",
             },
         )
+
+    def test_research_request_logs_received_marker_without_secrets_or_body(self) -> None:
+        workflow_output = self._build_workflow_output()
+        completed_workflow = RecordingWorkflow(
+            result={
+                "research_query": workflow_output.research_query,
+                "resolved_company": workflow_output.resolved_company,
+                "evidence_bundle": workflow_output.evidence_bundle,
+                "workflow_status": "completed",
+                "current_stage": "completed",
+                "errors": (),
+            }
+        )
+        app = create_app(
+            settings_loader=lambda: self._build_settings(),
+            dependencies_factory=lambda settings, **kwargs: SimpleNamespace(  # noqa: ARG005
+                workflow=completed_workflow,
+                build_workflow_output=build_workflow_output,
+                run_completed_workflow=run_completed_workflow,
+                cleanup=lambda: None,
+            ),
+        )
+
+        with TestClient(app) as client, self.assertLogs("app.api", level="INFO") as logs:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            any(
+                record.getMessage().startswith(
+                    "research_request_received route=/research service_name="
+                )
+                for record in logs.records
+            )
+        )
+        joined_logs = "\n".join(record.getMessage() for record in logs.records)
+        for forbidden in (
+            "secret",
+            "Apple Inc.",
+            "AAPL",
+            "0000320193",
+            "Analyze the company's recent financial performance and strategic risks",
+            "Authorization",
+            "Bearer",
+            "vector",
+            "evidence",
+            "provider",
+        ):
+            self.assertNotIn(forbidden, joined_logs)
 
     def test_invalid_company_input_returns_400(self) -> None:
         app = create_app(settings_loader=lambda: self._build_settings())
@@ -602,6 +713,18 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(first_client.close_count, 1)
         self.assertEqual(second_client.close_count, 1)
+
+    def test_create_app_does_not_duplicate_logging_handlers(self) -> None:
+        root_logger = logging.getLogger()
+        before = list(root_logger.handlers)
+
+        create_app(settings_loader=lambda: self._build_settings())
+        after_first = list(root_logger.handlers)
+        create_app(settings_loader=lambda: self._build_settings())
+        after_second = list(root_logger.handlers)
+
+        self.assertEqual(len(after_first), len(after_second))
+        self.assertGreaterEqual(len(after_first), len(before))
 
     def test_clients_close_exactly_once_on_failure(self) -> None:
         first_client = RecordingClosableClient()

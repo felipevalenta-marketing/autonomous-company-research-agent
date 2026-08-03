@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from collections.abc import Iterable
 
 
@@ -12,6 +13,7 @@ def configure_logging(level: int = logging.INFO) -> None:
     logging.basicConfig(
         level=level,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        stream=sys.stdout,
     )
 
 
@@ -23,4 +25,3 @@ def redact_sensitive_text(text: str, secrets: Iterable[str] = ()) -> str:
         if secret:
             redacted = redacted.replace(secret, "[REDACTED]")
     return redacted
-
