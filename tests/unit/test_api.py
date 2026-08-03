@@ -110,11 +110,11 @@ class ApiTests(unittest.TestCase):
             "current_stage": "failed",
             "errors": (
                 ResearchWorkflowError(
-                    code="RAGQueryError",
+                    code="RAGQueryResponseConsistencyError",
                     message="Research retrieval failed.",
                     details=(
                         ("stage", "retrieving_research"),
-                        ("error_type", "OpenAIEmbeddingsTransportError"),
+                        ("error_type", "RAGQueryResponseConsistencyError"),
                     ),
                 ),
             ),
@@ -475,7 +475,7 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(
             logs.records[0].getMessage(),
-            "research_request_failed stage=workflow_execution error_type=RAGQueryError cause_type=OpenAIEmbeddingsTransportError response_status=502",
+            "research_request_failed stage=workflow_execution error_type=RAGQueryResponseConsistencyError cause_type=None response_status=502",
         )
         self.assertNotIn("Analyze the company's recent financial performance and strategic risks", logs.records[0].getMessage())
         self.assertNotIn("secret", logs.records[0].getMessage())

@@ -4,6 +4,8 @@ from .normalization import RAGMetadataError, RAGNormalizationError, RAGScoreErro
 from .retrieval_service import (
     RAGEmbeddingError,
     RAGQueryError,
+    RAGQueryNamespaceConsistencyError,
+    RAGQueryResponseConsistencyError,
     RAGRetrievalError,
     RAGRetrievalInputError,
     retrieve_rag_results,
@@ -14,6 +16,8 @@ __all__ = [
     "RAGMetadataError",
     "RAGNormalizationError",
     "RAGQueryError",
+    "RAGQueryNamespaceConsistencyError",
+    "RAGQueryResponseConsistencyError",
     "RAGRetrievalError",
     "RAGRetrievalInputError",
     "RAGScoreError",

@@ -38,6 +38,14 @@ class RAGQueryError(RAGRetrievalError):
     """Raised when Pinecone retrieval fails."""
 
 
+class RAGQueryResponseConsistencyError(RAGQueryError):
+    """Raised when a Pinecone query response does not satisfy the approved contract."""
+
+
+class RAGQueryNamespaceConsistencyError(RAGQueryError):
+    """Raised when a Pinecone query response namespace does not match the requested namespace."""
+
+
 def retrieve_rag_results(
     query: str,
     resolved_company: ResolvedCompany,
@@ -73,9 +81,9 @@ def retrieve_rag_results(
         raise RAGQueryError("RAG Pinecone query failed.") from exc
 
     if not isinstance(query_response, PineconeQueryResponseDTO):
-        raise RAGQueryError("RAG Pinecone query returned an invalid response object.")
+        raise RAGQueryResponseConsistencyError("RAG Pinecone query returned an invalid response object.")
     if query_response.namespace is not None and query_response.namespace != namespace:
-        raise RAGQueryError("RAG Pinecone query returned a mismatched namespace.")
+        raise RAGQueryNamespaceConsistencyError("RAG Pinecone query returned a mismatched namespace.")
 
     try:
         return normalize_rag_results(resolved_company, query_response, retrieval_scope=namespace)

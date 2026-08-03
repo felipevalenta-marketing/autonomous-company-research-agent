@@ -16,6 +16,8 @@ from app.rag.normalization import normalize_rag_results
 from app.rag.retrieval_service import (
     RAGEmbeddingError,
     RAGQueryError,
+    RAGQueryNamespaceConsistencyError,
+    RAGQueryResponseConsistencyError,
     RAGRetrievalError,
     RAGRetrievalInputError,
     retrieve_rag_results,
@@ -229,6 +231,35 @@ class RAGRetrievalServiceTests(unittest.TestCase):
 
         with self.assertRaises(RAGQueryError):
             retrieve_rag_results(query, company, embedding_service, vector_query_service, top_k=4, namespace_prefix="company")
+
+    def test_invalid_query_response_object_raises_response_consistency_error_without_cause(self) -> None:
+        query = "Apple strategy?"
+        company = self._build_company()
+        namespace = build_pinecone_namespace(company, "company")
+        embedding_service = FakeEmbeddingService(response=self._build_embedding_result(query))
+        vector_query_service = FakeVectorQueryService(response=object())  # type: ignore[arg-type]
+
+        with self.assertRaises(RAGQueryResponseConsistencyError) as context:
+            retrieve_rag_results(query, company, embedding_service, vector_query_service, top_k=4, namespace_prefix="company")
+
+        self.assertTrue(issubclass(RAGQueryResponseConsistencyError, RAGQueryError))
+        self.assertIsNone(context.exception.__cause__)
+        self.assertEqual(vector_query_service.calls[-1][1], namespace)
+
+    def test_mismatched_namespace_raises_namespace_consistency_error_without_cause(self) -> None:
+        query = "Apple strategy?"
+        company = self._build_company()
+        embedding_service = FakeEmbeddingService(response=self._build_embedding_result(query))
+        vector_query_service = FakeVectorQueryService(
+            response=PineconeQueryResponseDTO(matches=(self._build_match(),), namespace="company:cik:wrong")
+        )
+
+        with self.assertRaises(RAGQueryNamespaceConsistencyError) as context:
+            retrieve_rag_results(query, company, embedding_service, vector_query_service, top_k=4, namespace_prefix="company")
+
+        self.assertTrue(issubclass(RAGQueryNamespaceConsistencyError, RAGQueryError))
+        self.assertIsNone(context.exception.__cause__)
+        self.assertEqual(len(vector_query_service.calls), 1)
 
     def test_retrieval_result_does_not_mutate_state_or_require_state(self) -> None:
         query = "Apple strategy?"

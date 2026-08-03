@@ -341,7 +341,13 @@ def _workflow_retrieval_failure(final_state: object) -> tuple[str, str | None] |
 
     for error in errors:
         code = getattr(error, "code", None)
-        if code not in {"RAGQueryError", "RAGEmbeddingError", "RAGRetrievalError"}:
+        if code not in {
+            "RAGQueryError",
+            "RAGQueryResponseConsistencyError",
+            "RAGQueryNamespaceConsistencyError",
+            "RAGEmbeddingError",
+            "RAGRetrievalError",
+        }:
             continue
         details = getattr(error, "details", ())
         if not isinstance(details, tuple):

@@ -20,7 +20,11 @@ from app.services.evidence_assembly_service import (
     RAGEvidenceRecord,
 )
 from app.services.rag_query_service import RAGQueryError, RAGQueryInputError, RAGQueryResult
-from app.rag.retrieval_service import RAGEmbeddingError
+from app.rag.retrieval_service import (
+    RAGEmbeddingError,
+    RAGQueryNamespaceConsistencyError,
+    RAGQueryResponseConsistencyError,
+)
 from app.clients.openai_embeddings_client import OpenAIEmbeddingsTransportError
 
 
@@ -433,6 +437,28 @@ class LangGraphWorkflowTests(unittest.TestCase):
         )
         self.assertNotIn("rag_query_result", result)
         self.assertNotIn("evidence_bundle", result)
+
+    def test_retrieval_consistency_failures_record_concrete_typed_error_names(self) -> None:
+        for rag_error, expected_code in (
+            (RAGQueryResponseConsistencyError("RAG Pinecone query returned an invalid response object."), "RAGQueryResponseConsistencyError"),
+            (RAGQueryNamespaceConsistencyError("RAG Pinecone query returned a mismatched namespace."), "RAGQueryNamespaceConsistencyError"),
+        ):
+            with self.subTest(expected_code=expected_code):
+                workflow = self._build_workflow(
+                    rag_error=rag_error,
+                    evidence_bundle=self._build_bundle("Assess Apple", (self._build_evidence_record("Assess Apple"),)),
+                )
+
+                result = workflow.invoke({"research_query": "Assess Apple", "company_input": "Apple Inc."})
+
+                error = result["errors"][0]
+                self.assertEqual(result["workflow_status"], "failed")
+                self.assertEqual(result["current_stage"], "failed")
+                self.assertEqual(error.code, expected_code)
+                self.assertEqual(error.message, "Research retrieval failed.")
+                self.assertEqual(error.details, (("stage", "retrieving_research"), ("error_type", expected_code)))
+                self.assertNotIn("rag_query_result", result)
+                self.assertNotIn("evidence_bundle", result)
 
     def test_retrieval_failure_without_cause_records_own_class_name(self) -> None:
         workflow = self._build_workflow(
