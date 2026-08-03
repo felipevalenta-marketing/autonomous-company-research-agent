@@ -25,8 +25,10 @@ from app.services.workflow_integration_service import (
     WorkflowIntegrationConsistencyError,
     WorkflowIntegrationError,
     WorkflowIntegrationInputError,
+    run_completed_workflow,
 )
 from app.services.workflow_output_service import WorkflowOutputError
+from app.services.workflow_output_service import build_workflow_output
 from app.settings import Settings, load_settings
 
 SERVICE_NAME = "autonomous-company-research-agent"
@@ -75,7 +77,7 @@ def create_app(
             return _invalid_request_response()
 
         try:
-            result = await run_in_threadpool(
+            final_state = await run_in_threadpool(
                 _execute_research_request,
                 settings,
                 dependencies_factory,
@@ -118,6 +120,60 @@ def create_app(
             )
             return _internal_error_response()
 
+        retrieval_failure = _workflow_retrieval_failure(final_state)
+        if retrieval_failure is not None:
+            error_type, cause_type = retrieval_failure
+            _log_research_request_failure(
+                stage="workflow_execution",
+                error_type=error_type,
+                cause_type=cause_type,
+                response_status=502,
+            )
+            return _provider_failure_response()
+
+        try:
+            workflow_output = build_workflow_output(final_state)
+            result = run_completed_workflow(workflow_output)
+        except WorkflowOutputError as exc:
+            if _workflow_failure_has_retrieval_cause(exc):
+                cause = getattr(exc, "__cause__", None)
+                _log_research_request_failure(
+                    stage="workflow_output",
+                    error_type=type(exc).__name__,
+                    cause_type=type(cause).__name__ if isinstance(cause, Exception) else "None",
+                    response_status=502,
+                )
+                return _provider_failure_response()
+            _log_research_request_failure(
+                stage="workflow_output",
+                exc=exc,
+                response_status=500,
+            )
+            return _internal_error_response()
+        except WorkflowIntegrationError as exc:
+            if _workflow_failure_has_retrieval_cause(exc):
+                cause = getattr(exc, "__cause__", None)
+                _log_research_request_failure(
+                    stage="workflow_output",
+                    error_type=type(exc).__name__,
+                    cause_type=type(cause).__name__ if isinstance(cause, Exception) else "None",
+                    response_status=502,
+                )
+                return _provider_failure_response()
+            _log_research_request_failure(
+                stage="workflow_output",
+                exc=exc,
+                response_status=500,
+            )
+            return _internal_error_response()
+        except Exception as exc:
+            _log_research_request_failure(
+                stage="unexpected",
+                exc=exc,
+                response_status=500,
+            )
+            return _internal_error_response()
+
         return JSONResponse(result, status_code=200)
 
     app = Starlette(
@@ -138,7 +194,7 @@ def _execute_research_request(
     settings: Settings,
     dependencies_factory: Callable[..., object],
     normalized_request: NormalizedResearchRequest,
-) -> dict[str, object]:
+) -> object:
     dependencies = dependencies_factory(
         settings,
         company=normalized_request.company,
@@ -147,14 +203,12 @@ def _execute_research_request(
     )
     cleanup = getattr(dependencies, "cleanup", None)
     try:
-        workflow_state = dependencies.workflow.invoke(
+        return dependencies.workflow.invoke(
             {
                 "research_query": normalized_request.query,
                 "company_input": normalized_request.company,
             }
         )
-        workflow_output = dependencies.build_workflow_output(workflow_state)
-        return dependencies.run_completed_workflow(workflow_output)
     finally:
         if callable(cleanup):
             cleanup()
@@ -252,13 +306,87 @@ def _internal_error_response() -> JSONResponse:
     )
 
 
-def _log_research_request_failure(*, stage: str, exc: Exception, response_status: int) -> None:
-    cause = getattr(exc, "__cause__", None)
-    cause_type = type(cause).__name__ if isinstance(cause, Exception) else "None"
+def _log_research_request_failure(
+    *,
+    stage: str,
+    response_status: int,
+    exc: Exception | None = None,
+    error_type: str | None = None,
+    cause_type: str | None = None,
+) -> None:
+    if exc is not None:
+        error_type = type(exc).__name__
+        cause = getattr(exc, "__cause__", None)
+        cause_type = type(cause).__name__ if isinstance(cause, Exception) else "None"
+    if error_type is None:
+        error_type = "None"
     _LOGGER.warning(
         "research_request_failed stage=%s error_type=%s cause_type=%s response_status=%s",
         stage,
-        type(exc).__name__,
-        cause_type,
+        error_type,
+        cause_type or "None",
         response_status,
     )
+
+
+def _workflow_retrieval_failure(final_state: object) -> tuple[str, str | None] | None:
+    if not isinstance(final_state, dict):
+        return None
+    if final_state.get("workflow_status") != "failed":
+        return None
+
+    errors = final_state.get("errors")
+    if not isinstance(errors, tuple):
+        return None
+
+    for error in errors:
+        code = getattr(error, "code", None)
+        if code not in {"RAGQueryError", "RAGEmbeddingError", "RAGRetrievalError"}:
+            continue
+        details = getattr(error, "details", ())
+        if not isinstance(details, tuple):
+            continue
+
+        stage = None
+        cause_type = None
+        for detail in details:
+            if not isinstance(detail, tuple) or len(detail) != 2:
+                continue
+            key, value = detail
+            if key == "stage" and value == "retrieving_research":
+                stage = "retrieving_research"
+            elif key == "error_type" and isinstance(value, str):
+                normalized = value.strip()
+                if normalized and not normalized.startswith("RAG"):
+                    cause_type = normalized
+
+        if stage == "retrieving_research":
+            return str(code), cause_type
+    return None
+
+
+def _workflow_failure_has_retrieval_cause(exc: Exception) -> bool:
+    current: Exception | None = exc
+    seen: set[int] = set()
+    retrieval_types = {
+        "EmbeddingServiceError",
+        "OpenAIEmbeddingsTransportError",
+        "OpenAIEmbeddingsTimeoutError",
+        "OpenAIEmbeddingsRateLimitError",
+        "PineconeClientError",
+        "PineconeTransportError",
+        "PineconeTimeoutError",
+        "PineconeRateLimitError",
+        "RAGEmbeddingError",
+        "RAGQueryError",
+        "RAGRetrievalError",
+        "VectorQueryError",
+    }
+
+    while isinstance(current, Exception) and id(current) not in seen:
+        seen.add(id(current))
+        if type(current).__name__ in retrieval_types:
+            return True
+        cause = getattr(current, "__cause__", None)
+        current = cause if isinstance(cause, Exception) else None
+    return False

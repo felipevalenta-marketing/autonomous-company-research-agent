@@ -9,6 +9,7 @@ from unittest.mock import patch
 from starlette.testclient import TestClient
 
 from app.api import create_app
+from app.graph.state import ResearchWorkflowError
 from app.clients.sec_client import SecTransportError
 from app.models.company import ResolvedCompany
 from app.services.evidence_assembly_service import EvidenceBundle, RAGEvidenceRecord
@@ -100,6 +101,24 @@ class ApiTests(unittest.TestCase):
             run_completed_workflow=run_completed_workflow,
             cleanup=cleanup,
         )
+
+    def _build_failed_retrieval_state(self) -> dict[str, object]:
+        return {
+            "research_query": "Analyze the company's recent financial performance and strategic risks",
+            "company_input": "Apple Inc.",
+            "workflow_status": "failed",
+            "current_stage": "failed",
+            "errors": (
+                ResearchWorkflowError(
+                    code="RAGQueryError",
+                    message="Research retrieval failed.",
+                    details=(
+                        ("stage", "retrieving_research"),
+                        ("error_type", "OpenAIEmbeddingsTransportError"),
+                    ),
+                ),
+            ),
+        }
 
     def test_health_returns_ok_and_does_not_construct_provider_clients(self) -> None:
         factory_called = {"count": 0}
@@ -420,22 +439,107 @@ class ApiTests(unittest.TestCase):
             "research_request_failed stage=unexpected error_type=RuntimeError cause_type=None response_status=500",
         )
 
-    def test_output_failure_logs_exception_and_cause_without_secrets(self) -> None:
-        def failing_build_workflow_output(state):  # noqa: ANN001
-            del state
-            raise WorkflowOutputInputError("output secret") from RAGQueryError("nested secret")
+    def test_failed_workflow_state_with_retrieval_error_returns_502_and_logs_safe_metadata(self) -> None:
+        cleanup_client = RecordingClosableClient()
+        workflow = RecordingWorkflow(result=self._build_failed_retrieval_state())
+        app = create_app(
+            settings_loader=lambda: self._build_settings(),
+            dependencies_factory=lambda settings, **kwargs: SimpleNamespace(  # noqa: ARG005
+                workflow=workflow,
+                build_workflow_output=lambda state: self.fail("build_workflow_output must not run for retrieval failures."),
+                run_completed_workflow=run_completed_workflow,
+                cleanup=cleanup_client.close,
+            ),
+        )
 
+        with TestClient(app) as client, self.assertLogs("app.api", level="WARNING") as logs:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "RESEARCH_RETRIEVAL_FAILED",
+                "message": "Research retrieval failed.",
+            },
+        )
+        self.assertEqual(
+            logs.records[0].getMessage(),
+            "research_request_failed stage=workflow_execution error_type=RAGQueryError cause_type=OpenAIEmbeddingsTransportError response_status=502",
+        )
+        self.assertNotIn("Analyze the company's recent financial performance and strategic risks", logs.records[0].getMessage())
+        self.assertNotIn("secret", logs.records[0].getMessage())
+        self.assertEqual(cleanup_client.close_count, 1)
+
+    def test_output_failure_with_retrieval_cause_returns_502_and_hides_details(self) -> None:
         app = create_app(
             settings_loader=lambda: self._build_settings(),
             dependencies_factory=lambda settings, **kwargs: SimpleNamespace(  # noqa: ARG005
                 workflow=RecordingWorkflow(result={"workflow_status": "completed", "current_stage": "completed"}),
-                build_workflow_output=failing_build_workflow_output,
+                build_workflow_output=build_workflow_output,
                 run_completed_workflow=run_completed_workflow,
                 cleanup=lambda: None,
             ),
         )
 
-        with TestClient(app) as client, self.assertLogs("app.api", level="WARNING") as logs:
+        def failing_build_workflow_output(state):  # noqa: ANN001
+            del state
+            raise WorkflowOutputInputError("output secret") from RAGQueryError("nested secret")
+
+        with patch("app.api.build_workflow_output", side_effect=failing_build_workflow_output), TestClient(app) as client, self.assertLogs("app.api", level="WARNING") as logs:
+            response = client.post(
+                "/research",
+                headers={"X-API-Key": "secret"},
+                json={
+                    "company": "Apple Inc.",
+                    "ticker": "AAPL",
+                    "cik": "0000320193",
+                    "query": "Analyze the company's recent financial performance and strategic risks",
+                },
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.json(),
+            {
+                "status": "failed",
+                "error_code": "RESEARCH_RETRIEVAL_FAILED",
+                "message": "Research retrieval failed.",
+            },
+        )
+        self.assertEqual(
+            logs.records[0].getMessage(),
+            "research_request_failed stage=workflow_output error_type=WorkflowOutputInputError cause_type=RAGQueryError response_status=502",
+        )
+        self.assertNotIn("output secret", logs.records[0].getMessage())
+        self.assertNotIn("nested secret", logs.records[0].getMessage())
+
+    def test_genuine_output_input_error_without_retrieval_cause_remains_500(self) -> None:
+        app = create_app(
+            settings_loader=lambda: self._build_settings(),
+            dependencies_factory=lambda settings, **kwargs: SimpleNamespace(  # noqa: ARG005
+                workflow=RecordingWorkflow(result={"workflow_status": "completed", "current_stage": "completed"}),
+                build_workflow_output=build_workflow_output,
+                run_completed_workflow=run_completed_workflow,
+                cleanup=lambda: None,
+            ),
+        )
+
+        def failing_build_workflow_output(state):  # noqa: ANN001
+            del state
+            raise WorkflowOutputInputError("output secret")
+
+        with patch("app.api.build_workflow_output", side_effect=failing_build_workflow_output), TestClient(app) as client, self.assertLogs("app.api", level="WARNING") as logs:
             response = client.post(
                 "/research",
                 headers={"X-API-Key": "secret"},
@@ -458,10 +562,9 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(
             logs.records[0].getMessage(),
-            "research_request_failed stage=workflow_output error_type=WorkflowOutputInputError cause_type=RAGQueryError response_status=500",
+            "research_request_failed stage=workflow_output error_type=WorkflowOutputInputError cause_type=None response_status=500",
         )
         self.assertNotIn("output secret", logs.records[0].getMessage())
-        self.assertNotIn("nested secret", logs.records[0].getMessage())
 
     def test_clients_close_exactly_once_on_success(self) -> None:
         workflow_output = self._build_workflow_output()
