@@ -454,7 +454,7 @@ class LangGraphWorkflowTests(unittest.TestCase):
                 error = result["errors"][0]
                 self.assertEqual(result["workflow_status"], "failed")
                 self.assertEqual(result["current_stage"], "failed")
-                self.assertEqual(error.code, expected_code)
+                self.assertEqual(error.code, "RAGQueryError")
                 self.assertEqual(error.message, "Research retrieval failed.")
                 self.assertEqual(error.details, (("stage", "retrieving_research"), ("error_type", expected_code)))
                 self.assertNotIn("rag_query_result", result)

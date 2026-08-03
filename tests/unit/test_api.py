@@ -112,7 +112,7 @@ class ApiTests(unittest.TestCase):
             "current_stage": "failed",
             "errors": (
                 ResearchWorkflowError(
-                    code="RAGQueryResponseConsistencyError",
+                    code="RAGQueryError",
                     message="Research retrieval failed.",
                     details=(
                         ("stage", "retrieving_research"),

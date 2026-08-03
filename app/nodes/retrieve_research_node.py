@@ -9,7 +9,12 @@ from app.graph.state import ResearchWorkflowError, ResearchWorkflowState
 from app.models.company import ResolvedCompany
 from app.services.embedding_service import EmbeddingServiceResult
 from app.services.rag_query_service import RAGQueryError, RAGQueryResult
-from app.rag.retrieval_service import RAGEmbeddingError, RAGRetrievalError
+from app.rag.retrieval_service import (
+    RAGEmbeddingError,
+    RAGQueryNamespaceConsistencyError,
+    RAGQueryResponseConsistencyError,
+    RAGRetrievalError,
+)
 
 RAGQueryDependency = Callable[
     [
@@ -81,7 +86,7 @@ def build_retrieve_research_node(
                 "current_stage": _FAILED_STAGE,
                 "errors": (
                     ResearchWorkflowError(
-                        code=exc.__class__.__name__,
+                        code=_retrieval_error_code(exc),
                         message="Research retrieval failed.",
                         details=(
                             ("stage", _RETRIEVING_STAGE),
@@ -144,4 +149,10 @@ def build_retrieve_research_node(
 def _retrieval_error_type(exc: Exception) -> str:
     if isinstance(exc, RAGQueryError) and exc.__cause__ is not None:
         return exc.__cause__.__class__.__name__
+    return exc.__class__.__name__
+
+
+def _retrieval_error_code(exc: Exception) -> str:
+    if isinstance(exc, (RAGQueryResponseConsistencyError, RAGQueryNamespaceConsistencyError)):
+        return "RAGQueryError"
     return exc.__class__.__name__
