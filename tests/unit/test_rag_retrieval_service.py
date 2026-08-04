@@ -218,6 +218,39 @@ class RAGRetrievalServiceTests(unittest.TestCase):
 
         self.assertEqual(results, ())
 
+    def test_company_name_alias_with_legal_suffixes_survives_retrieval(self) -> None:
+        query = "Microsoft strategy?"
+        company = ResolvedCompany(company_name="Microsoft Corporation", ticker="MSFT", cik="0000789019")
+        namespace = build_pinecone_namespace(company, "company")
+        embedding_service = FakeEmbeddingService(response=self._build_embedding_result(query))
+        vector_query_service = FakeVectorQueryService(
+            response=PineconeQueryResponseDTO(
+                matches=(
+                    PineconeQueryMatchDTO(
+                        record_id="match-msft",
+                        score=0.94,
+                        metadata={
+                            "document_id": "doc-msft",
+                            "chunk_id": "chunk-msft",
+                            "source_id": "source-msft",
+                            "text": "Microsoft reported cloud growth.",
+                            "source_url": "https://example.com/msft",
+                            "company_name": "MICROSOFT CORP",
+                            "content_checksum": "checksum-msft",
+                        },
+                    ),
+                ),
+                namespace=namespace,
+            )
+        )
+
+        results = retrieve_rag_results(query, company, embedding_service, vector_query_service, top_k=4, namespace_prefix="company")
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].company_name, "Microsoft Corporation")
+        self.assertEqual(results[0].source_id, "source-msft")
+        self.assertEqual(vector_query_service.calls[-1][1], namespace)
+
     def test_embedding_error_propagates(self) -> None:
         query = "Apple strategy?"
         company = self._build_company()

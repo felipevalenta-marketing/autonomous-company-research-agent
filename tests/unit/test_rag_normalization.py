@@ -34,8 +34,8 @@ class RAGNormalizationTests(unittest.TestCase):
         chunk_id: str = "chunk-1",
         source_id: str = "source-1",
         company_name: str = "Apple Inc.",
-        ticker: str = "AAPL",
-        cik: str = "0000320193",
+        ticker: str | None = "AAPL",
+        cik: str | None = "0000320193",
         content_checksum: str | None = None,
     ) -> PineconeQueryMatchDTO:
         metadata: dict[str, object] = {
@@ -43,11 +43,13 @@ class RAGNormalizationTests(unittest.TestCase):
             "chunk_id": chunk_id,
             "source_id": source_id,
             "company_name": company_name,
-            "ticker": ticker,
-            "cik": cik,
             "source_url": source_url,
             "provider_name": "Pinecone",
         }
+        if ticker is not None:
+            metadata["ticker"] = ticker
+        if cik is not None:
+            metadata["cik"] = cik
         if text is not None:
             metadata["text"] = text
         if content_checksum is not None:
@@ -115,11 +117,39 @@ class RAGNormalizationTests(unittest.TestCase):
 
     def test_company_identity_mismatch_raises(self) -> None:
         company = self._build_company()
-        match = self._build_match(company_name="Different Corp.")
+        match = self._build_match(company_name="Different Corp.", ticker=None, cik=None)
         response = PineconeQueryResponseDTO(matches=(match,), namespace="company:cik:abc")
 
         with self.assertRaises(RAGMetadataError):
             normalize_rag_results(company, response)
+
+    def test_company_name_alias_with_legal_suffixes_survives_normalization_and_assembly(self) -> None:
+        company = ResolvedCompany(company_name="Microsoft Corporation", ticker="MSFT", cik="0000789019")
+        match = self._build_match(
+            company_name="MICROSOFT CORP",
+            ticker=None,
+            cik=None,
+            source_id="source-msft",
+            document_id="doc-msft",
+            chunk_id="chunk-msft",
+            text="Microsoft reported strong cloud growth.",
+            source_url="https://example.com/msft",
+            content_checksum="checksum-msft",
+        )
+        response = PineconeQueryResponseDTO(matches=(match,), namespace="company:cik:f5473a65fe70da981e470916")
+
+        results = normalize_rag_results(company, response, retrieval_scope=response.namespace)
+        bundle = assemble_evidence(
+            RAGQueryResult(query="Analyze Microsoft", results=results),
+            max_evidence=3,
+        )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].company_name, "Microsoft Corporation")
+        self.assertEqual(results[0].source_id, "source-msft")
+        self.assertEqual(bundle.evidence_count, 1)
+        self.assertEqual(bundle.source_count, 1)
+        self.assertEqual(bundle.document_count, 1)
 
     def test_malformed_metadata_raises(self) -> None:
         company = self._build_company()

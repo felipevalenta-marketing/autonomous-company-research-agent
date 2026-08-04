@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isfinite
@@ -23,6 +25,9 @@ class RAGMetadataError(RAGNormalizationError):
 
 class RAGScoreError(RAGNormalizationError):
     """Raised when a match score is invalid."""
+
+
+_LEGAL_SUFFIXES = {"inc", "incorporated", "corp", "corporation", "ltd", "limited", "llc"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,20 +170,30 @@ def _normalize_metadata(metadata: object) -> dict[str, object]:
 
 
 def _validate_company_identity(resolved_company: ResolvedCompany, metadata: Mapping[str, object]) -> None:
-    expected_company_name = _normalize_company_name(resolved_company.company_name)
     actual_company_name = _optional_identifier(metadata.get("company_name"), "company_name")
-    if actual_company_name is not None and _normalize_company_name(actual_company_name) != expected_company_name:
-        raise RAGMetadataError("match company_name metadata did not match the resolved company.")
 
-    expected_ticker = _normalize_ticker(resolved_company.ticker)
-    actual_ticker = _optional_identifier(metadata.get("ticker"), "ticker")
-    if expected_ticker is not None and actual_ticker is not None and _normalize_ticker(actual_ticker) != expected_ticker:
-        raise RAGMetadataError("match ticker metadata did not match the resolved company.")
+    identity_matched = False
 
     expected_cik = _normalize_cik(resolved_company.cik)
     actual_cik = _optional_identifier(metadata.get("cik"), "cik")
-    if expected_cik is not None and actual_cik is not None and _normalize_cik(actual_cik) != expected_cik:
-        raise RAGMetadataError("match cik metadata did not match the resolved company.")
+    if expected_cik is not None and actual_cik is not None:
+        if _normalize_cik(actual_cik) != expected_cik:
+            raise RAGMetadataError("match cik metadata did not match the resolved company.")
+        identity_matched = True
+
+    expected_ticker = _normalize_ticker(resolved_company.ticker)
+    actual_ticker = _optional_identifier(metadata.get("ticker"), "ticker")
+    if expected_ticker is not None and actual_ticker is not None:
+        if _normalize_ticker(actual_ticker) != expected_ticker:
+            raise RAGMetadataError("match ticker metadata did not match the resolved company.")
+        identity_matched = True
+
+    if identity_matched:
+        return
+
+    expected_company_name = resolved_company.company_name
+    if actual_company_name is not None and not _company_name_matches(expected_company_name, actual_company_name):
+        raise RAGMetadataError("match company_name metadata did not match the resolved company.")
 
 
 def _extract_text(metadata: Mapping[str, object]) -> str | None:
@@ -232,7 +247,27 @@ def _normalize_optional_text(value: str | None) -> str | None:
 
 
 def _normalize_company_name(value: str) -> str:
-    return " ".join(value.split()).casefold()
+    normalized = unicodedata.normalize("NFKC", value).casefold()
+    normalized = re.sub(r"[^0-9a-z]+", " ", normalized)
+    return " ".join(normalized.split())
+
+
+def _normalize_company_name_with_suffix_handling(value: str) -> str:
+    tokens = _normalize_company_name(value).split()
+    while tokens and tokens[-1] in _LEGAL_SUFFIXES:
+        tokens.pop()
+    return " ".join(tokens)
+
+
+def _company_name_matches(expected_company_name: str, actual_company_name: str) -> bool:
+    expected_normalized = _normalize_company_name(expected_company_name)
+    actual_normalized = _normalize_company_name(actual_company_name)
+    if actual_normalized == expected_normalized:
+        return True
+
+    return _normalize_company_name_with_suffix_handling(actual_company_name) == _normalize_company_name_with_suffix_handling(
+        expected_company_name
+    )
 
 
 def _normalize_ticker(value: str | None) -> str | None:
