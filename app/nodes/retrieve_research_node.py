@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+import logging
+from pathlib import Path
+import traceback
 
 from app.clients.pinecone_dtos import PineconeQueryResponseDTO
 from app.graph.state import ResearchWorkflowError, ResearchWorkflowState
@@ -15,6 +18,8 @@ from app.rag.retrieval_service import (
     RAGQueryResponseConsistencyError,
     RAGRetrievalError,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 RAGQueryDependency = Callable[
     [
@@ -81,6 +86,7 @@ def build_retrieve_research_node(
                 namespace_prefix=namespace_prefix,
             )
         except (RAGQueryError, RAGEmbeddingError, RAGRetrievalError) as exc:
+            _log_retrieval_exception_origin(exc)
             return {
                 "workflow_status": _FAILED_STAGE,
                 "current_stage": _FAILED_STAGE,
@@ -96,6 +102,7 @@ def build_retrieve_research_node(
                 ),
             }
         except Exception as exc:  # pragma: no cover - defensive workflow boundary
+            _log_retrieval_exception_origin(exc)
             return {
                 "workflow_status": _FAILED_STAGE,
                 "current_stage": _FAILED_STAGE,
@@ -156,3 +163,34 @@ def _retrieval_error_code(exc: Exception) -> str:
     if isinstance(exc, (RAGQueryResponseConsistencyError, RAGQueryNamespaceConsistencyError)):
         return "RAGQueryError"
     return exc.__class__.__name__
+
+
+def _log_retrieval_exception_origin(exc: Exception) -> None:
+    origin_file, origin_function, origin_line = _safe_exception_origin(exc)
+    cause = getattr(exc, "__cause__", None)
+    cause_type = cause.__class__.__name__ if isinstance(cause, Exception) else "None"
+    _LOGGER.warning(
+        "retrieval_exception_origin exception_type=%s exception_module=%s origin_file=%s origin_function=%s origin_line=%s cause_type=%s",
+        exc.__class__.__name__,
+        exc.__class__.__module__,
+        origin_file,
+        origin_function,
+        origin_line,
+        cause_type,
+    )
+
+
+def _safe_exception_origin(exc: Exception) -> tuple[str, str, int]:
+    traceback_object = getattr(exc, "__traceback__", None)
+    if traceback_object is None:
+        return "unknown", "unknown", 0
+
+    frames = traceback.extract_tb(traceback_object)
+    if not frames:
+        return "unknown", "unknown", 0
+
+    frame = frames[-1]
+    origin_file = Path(frame.filename).name or "unknown"
+    origin_function = frame.name or "unknown"
+    origin_line = frame.lineno if isinstance(frame.lineno, int) and frame.lineno > 0 else 0
+    return origin_file, origin_function, origin_line

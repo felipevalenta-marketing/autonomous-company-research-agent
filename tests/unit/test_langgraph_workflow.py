@@ -20,6 +20,7 @@ from app.services.evidence_assembly_service import (
     RAGEvidenceRecord,
 )
 from app.services.rag_query_service import RAGQueryError, RAGQueryInputError, RAGQueryResult
+from app.services.rag_query_service import query_company_rag
 from app.rag.retrieval_service import (
     RAGEmbeddingError,
     RAGQueryNamespaceConsistencyError,
@@ -171,6 +172,13 @@ class LangGraphWorkflowTests(unittest.TestCase):
     def _build_query_result(self, query: str, results: tuple[RAGResult, ...]) -> RAGQueryResult:
         return RAGQueryResult(query=query, results=results)
 
+    def _query_company_rag_origin_line(self) -> int:
+        source_lines, start_line = inspect.getsourcelines(query_company_rag)
+        for offset, line in enumerate(source_lines):
+            if 'raise RAGQueryError("RAG query orchestration failed.") from exc' in line:
+                return start_line + offset
+        raise AssertionError("could not locate the query_company_rag origin line.")
+
     def _build_malformed_resolved_company(self) -> ResolvedCompany:
         malformed_company = object.__new__(ResolvedCompany)
         object.__setattr__(malformed_company, "company_name", "   ")
@@ -191,6 +199,19 @@ class LangGraphWorkflowTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module.build_validate_company_node()
+
+    def _load_retrieve_research_node_module(self):
+        module_path = Path("app/nodes/retrieve_research_node.py")
+        spec = importlib.util.spec_from_file_location("app.nodes.retrieve_research_node", module_path)
+        if spec is None or spec.loader is None:
+            raise AssertionError("could not load retrieve_research_node module.")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(spec.name, None)
+        return module
 
     def _build_workflow(
         self,
@@ -476,6 +497,84 @@ class LangGraphWorkflowTests(unittest.TestCase):
         self.assertEqual(error.details, (("stage", "retrieving_research"), ("error_type", "RAGQueryError")))
         self.assertNotIn("rag_query_result", result)
         self.assertNotIn("evidence_bundle", result)
+
+    def test_retrieval_exception_origin_logs_final_traceback_frame_without_leaking_messages(self) -> None:
+        query = "Assess Apple"
+        origin_line = self._query_company_rag_origin_line()
+
+        def query_dependency(
+            query_text: str,
+            resolved_company: ResolvedCompany,
+            embedding_service,
+            vector_query_service,
+            *,
+            top_k: int,
+            metadata_filter=None,
+            namespace_prefix=None,
+        ) -> RAGQueryResult:
+            del top_k, metadata_filter, namespace_prefix
+
+            def failing_retrieval_service(*args, **kwargs):  # noqa: ANN001, ANN002
+                del args, kwargs
+                raise OpenAIEmbeddingsTransportError("secret provider detail")
+
+            return query_company_rag(
+                query_text,
+                resolved_company,
+                embedding_service,
+                vector_query_service,
+                top_k=7,
+                retrieval_service=failing_retrieval_service,
+            )
+
+        workflow = self._build_workflow(
+            rag_query_dependency=query_dependency,
+            evidence_bundle=self._build_bundle(query, (self._build_evidence_record(query),)),
+        )
+
+        with self.assertLogs("app.nodes.retrieve_research_node", level="WARNING") as logs:
+            result = workflow.invoke({"research_query": query, "company_input": "Apple Inc."})
+
+        error = result["errors"][0]
+        self.assertEqual(result["workflow_status"], "failed")
+        self.assertEqual(result["current_stage"], "failed")
+        self.assertEqual(error.code, "RAGQueryError")
+        self.assertEqual(error.message, "Research retrieval failed.")
+        self.assertEqual(
+            error.details,
+            (("stage", "retrieving_research"), ("error_type", "OpenAIEmbeddingsTransportError")),
+        )
+        self.assertEqual(len(logs.records), 1)
+        self.assertEqual(
+            logs.records[0].getMessage(),
+            (
+                "retrieval_exception_origin "
+                "exception_type=RAGQueryError "
+                "exception_module=app.services.rag_query_service "
+                f"origin_file=rag_query_service.py origin_function=query_company_rag origin_line={origin_line} "
+                "cause_type=OpenAIEmbeddingsTransportError"
+            ),
+        )
+        self.assertNotIn("secret provider detail", logs.records[0].getMessage())
+        self.assertNotIn(str(Path(__file__).resolve()), logs.records[0].getMessage())
+        self.assertNotIn("secret provider detail", error.message)
+
+    def test_retrieval_exception_origin_missing_traceback_uses_safe_fallback_values(self) -> None:
+        exc = RAGQueryError("secret message")
+        retrieve_research_node_module = self._load_retrieve_research_node_module()
+
+        with self.assertLogs("app.nodes.retrieve_research_node", level="WARNING") as logs:
+            retrieve_research_node_module._log_retrieval_exception_origin(exc)
+
+        self.assertEqual(len(logs.records), 1)
+        message = logs.records[0].getMessage()
+        self.assertIn("retrieval_exception_origin", message)
+        self.assertIn("exception_type=RAGQueryError", message)
+        self.assertIn("origin_file=unknown", message)
+        self.assertIn("origin_function=unknown", message)
+        self.assertIn("origin_line=0", message)
+        self.assertIn("cause_type=None", message)
+        self.assertNotIn("secret message", message)
 
     def test_company_resolution_failure_routes_to_failure_before_validation(self) -> None:
         resolver = RecordingCompanyResolver(error=CompanyResolutionNoMatchError("No SEC company matched the supplied company name."))
