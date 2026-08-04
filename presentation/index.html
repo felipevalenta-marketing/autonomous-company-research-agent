@@ -115,13 +115,13 @@
 
       <span class="section-label">APIs &amp; Services</span>
       <div class="tech-grid tech-grid--strip reveal-group">
-        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">SEC</span><span class="tech-card__name">SEC EDGAR</span><p class="tech-card__desc">Provides authoritative company filings.</p></div>
-        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">AI</span><span class="tech-card__name">OpenAI Embeddings API</span><p class="tech-card__desc">Converts filing text and queries into semantic vectors.</p></div>
-        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">PC</span><span class="tech-card__name">Pinecone API</span><p class="tech-card__desc">Stores and retrieves company-scoped vectors.</p></div>
-        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">RW</span><span class="tech-card__name">Railway</span><p class="tech-card__desc">Hosts the authenticated production API.</p></div>
-        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">n8n</span><span class="tech-card__name">n8n</span><p class="tech-card__desc">Provides visual workflow automation.</p></div>
-        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">LG</span><span class="tech-card__name">LangGraph</span><p class="tech-card__desc">Orchestrates the stateful research process.</p></div>
-        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">FA</span><span class="tech-card__name">FastAPI</span><p class="tech-card__desc">Exposes the research workflow through HTTP.</p></div>
+        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">SEC</span><span class="tech-card__name">SEC EDGAR</span><p class="tech-card__desc">Official financial filings.</p></div>
+        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">AI</span><span class="tech-card__name">OpenAI Embeddings</span><p class="tech-card__desc">Semantic understanding of research questions.</p></div>
+        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">PC</span><span class="tech-card__name">Pinecone</span><p class="tech-card__desc">Semantic retrieval of relevant evidence.</p></div>
+        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">RW</span><span class="tech-card__name">Railway</span><p class="tech-card__desc">Production API deployment.</p></div>
+        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">n8n</span><span class="tech-card__name">n8n</span><p class="tech-card__desc">Workflow automation.</p></div>
+        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">LG</span><span class="tech-card__name">LangGraph</span><p class="tech-card__desc">Stateful AI workflow orchestration.</p></div>
+        <div class="tech-card tech-card--compact reveal"><span class="tech-card__logo">FA</span><span class="tech-card__name">FastAPI</span><p class="tech-card__desc">Public REST API.</p></div>
       </div>
     </div>
   </section>
@@ -202,8 +202,8 @@
       <h2>A deployed and fully tested project pipeline</h2>
       <div class="metrics">
         <div class="metric-card metric-card--accent"><span class="metric-card__value">550</span><span class="metric-card__label">automated tests passing</span></div>
-        <div class="metric-card metric-card--word"><span class="metric-card__value">Apple</span><span class="metric-card__label">evidence retrieval verified</span></div>
-        <div class="metric-card metric-card--word"><span class="metric-card__value">Microsoft</span><span class="metric-card__label">evidence retrieval verified</span></div>
+        <div class="metric-card metric-card--word"><span class="metric-card__value">Apple + Microsoft</span><span class="metric-card__label">retrieval verified</span></div>
+        <div class="metric-card metric-card--word"><span class="metric-card__value">SEC</span><span class="metric-card__label">source-grounded evidence</span></div>
         <div class="metric-card metric-card--word"><span class="metric-card__value">Railway</span><span class="metric-card__label">production deployment active</span></div>
         <div class="metric-card metric-card--word"><span class="metric-card__value">n8n</span><span class="metric-card__label">workflow automation completed</span></div>
       </div>
@@ -229,18 +229,16 @@
       <p class="eyebrow">Live Demonstration</p>
       <h2 class="demo-word">DEMO</h2>
       <div class="demo-actions">
-        <a class="btn btn--primary" href="https://autonomous-company-research-agent-production.up.railway.app" target="_blank" rel="noopener">Open Railway Deployment</a>
-        <!-- N8N_WORKFLOW_URL: no public n8n URL exists (self-hosted, imported locally per n8n/README.md).
-             Replace this href with the presenter's local n8n editor/workflow URL before presenting. -->
-        <a class="btn btn--secondary" href="N8N_WORKFLOW_URL" target="_blank" rel="noopener">Open n8n Workflow</a>
+        <a class="btn btn--primary" href="https://felipevalencia.app.n8n.cloud/workflow/b6THKkvUQaJegSRM" target="_blank" rel="noopener">Open n8n Workflow</a>
+        <a class="btn btn--secondary" href="https://autonomous-company-research-agent-production.up.railway.app" target="_blank" rel="noopener">Open Railway Deployment</a>
         <a class="btn btn--secondary" href="https://github.com/felipevalenta-marketing/autonomous-company-research-agent" target="_blank" rel="noopener">Open GitHub Repository</a>
       </div>
       <span class="section-label">Demo Checklist</span>
       <ul class="check-list demo-checklist">
-        <li>Run Apple request</li>
-        <li>Inspect structured evidence</li>
-        <li>Run Microsoft request</li>
-        <li>Confirm source-grounded retrieval</li>
+        <li>Apple Research</li>
+        <li>Microsoft Research</li>
+        <li>SEC Evidence</li>
+        <li>Traceable Sources</li>
       </ul>
     </div>
   </section>
@@ -252,11 +250,10 @@
       <p class="closing-name">Carlos Felipe Valencia</p>
       <p class="closing-thanks">Thank You</p>
       <p class="closing-questions">Questions?</p>
-      <p class="closing-statement">Accelerating company research with authoritative, traceable evidence.</p>
+      <p class="closing-statement">Trust comes from traceable evidence.</p>
       <div class="closing-links">
         <a href="https://github.com/felipevalenta-marketing/autonomous-company-research-agent" target="_blank" rel="noopener">GitHub</a>
-        <!-- LinkedIn: no confirmed URL available. Restore with:
-             <a href="REAL_LINKEDIN_URL" target="_blank" rel="noopener">LinkedIn</a> -->
+        <!-- A verified LinkedIn profile link can be added here once available. -->
       </div>
     </div>
   </section>

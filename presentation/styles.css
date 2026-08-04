@@ -607,7 +607,7 @@ h2 {
 }
 
 .metric-card--word .metric-card__value {
-  font-size: clamp(1.3rem, 2vw, 1.7rem);
+  font-size: clamp(1.15rem, 1.7vw, 1.55rem);
 }
 
 .metric-card__label {
@@ -651,6 +651,12 @@ h2 {
   margin: 0 auto;
 }
 
+.demo-checklist li {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
 /* ---------- demo slide ---------- */
 .slide--demo { text-align: center; }
 .slide--demo .slide__inner { display: flex; flex-direction: column; align-items: center; }
@@ -676,8 +682,8 @@ h2 {
 .btn {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 1rem;
-  padding: 0.9rem 1.9rem;
+  font-size: 1.02rem;
+  padding: 1rem 2.1rem;
   border-radius: 999px;
   text-decoration: none;
   display: inline-block;
@@ -687,6 +693,9 @@ h2 {
 .btn--primary {
   background: linear-gradient(120deg, var(--primary), var(--secondary));
   color: #06121f;
+  font-size: 1.08rem;
+  padding: 1.05rem 2.3rem;
+  box-shadow: 0 8px 26px rgba(34, 211, 238, 0.22);
 }
 
 .btn--secondary {

@@ -2,18 +2,16 @@
 
 The presentation is a static, self-contained site (`index.html`, `styles.css`, `script.js`). It has no build step and no backend dependency — it can be opened directly or served from any static host.
 
-## Before presenting: resolve the remaining placeholder
+## Demo links
 
-`LIVE_DEMO_URL` and `LINKEDIN_URL` have been resolved and no longer appear in `index.html`:
+All three DEMO-slide links are resolved and live in `index.html` — no placeholders remain:
 
-| Item | Where it appears | Status |
+| Item | Where it appears | Target |
 |---|---|---|
-| Railway deployment link | Slide 8 (Open Railway Deployment button) | Resolved to `https://autonomous-company-research-agent-production.up.railway.app` |
-| GitHub repository link | Slide 8 and Slide 9 | Resolved to `https://github.com/felipevalenta-marketing/autonomous-company-research-agent` |
-| LinkedIn link | Slide 9 (closing links) | Removed — no confirmed URL available. An HTML comment in the closing slide markup shows exactly where to restore `<a href="REAL_LINKEDIN_URL">` if one becomes available. |
-| `N8N_WORKFLOW_URL` | Slide 8 (Open n8n Workflow button) | **Still a placeholder.** n8n is self-hosted and imported locally (see `n8n/README.md`) — there is no public workflow URL. Replace the `href="N8N_WORKFLOW_URL"` in `index.html` with the presenter's local n8n editor URL (e.g. `http://localhost:5678/workflow/<id>`) right before presenting. |
-
-Search `presentation/index.html` for `N8N_WORKFLOW_URL` to find the exact spot.
+| n8n workflow link (primary button) | Slide 8, first button | `https://felipevalencia.app.n8n.cloud/workflow/b6THKkvUQaJegSRM` |
+| Railway deployment link | Slide 8, second button | `https://autonomous-company-research-agent-production.up.railway.app` |
+| GitHub repository link | Slide 8, third button, and Slide 9 closing links | `https://github.com/felipevalenta-marketing/autonomous-company-research-agent` |
+| LinkedIn link | Slide 9 (closing links) | Not shown — no confirmed profile URL available. An HTML comment in the closing slide markup marks where to add it once one exists. |
 
 ## Option A — GitHub Pages (preferred)
 
@@ -26,14 +24,12 @@ Search `presentation/index.html` for `N8N_WORKFLOW_URL` to find the exact spot.
      ```
    - Then set Pages to deploy from the `gh-pages` branch, root folder.
 4. GitHub will publish the site at `https://<username>.github.io/<repository-name>/`.
-5. Update `LIVE_DEMO_URL` in `index.html` to that address once published, then redeploy.
 
 ## Option B — Netlify Drop
 
 1. Go to Netlify's drag-and-drop deploy page.
 2. Drag the `presentation/` folder (containing `index.html`, `styles.css`, `script.js`, `assets/`) onto the page.
 3. Netlify assigns a public URL immediately — no account or CLI required for a one-off deploy.
-4. Use that URL as `LIVE_DEMO_URL` if this presentation itself is the "demo" link, or keep it separate from the application demo.
 
 ## Option C — Vercel static deployment
 

@@ -79,4 +79,4 @@ No fabricated evidence JSON is used in either path.
 - Keep the terminal/browser window large and pre-positioned before you start talking.
 - Say what commands and nodes *do*, not what they *are*.
 - If a live call fails mid-demo, don't troubleshoot on stage — say "this is a known environment issue" and switch to the backup steps above.
-- Before presenting, replace `N8N_WORKFLOW_URL` in `index.html` with the local n8n workflow URL (see `DEPLOYMENT.md`).
+- The Demo slide's three buttons are live: n8n Workflow (primary), Railway Deployment, GitHub Repository — no links need to be swapped before presenting.
