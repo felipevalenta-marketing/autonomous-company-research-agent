@@ -263,7 +263,7 @@ Railway supplies `PORT`, so it should not be added manually.
 - `data/raw/`: original input documents.
 - `data/processed/`: transformed data produced during future ingestion.
 
-The LangGraph workflow now orchestrates approved company resolution, RAG query retrieval, and evidence assembly, but it still does not perform provider collection, ReAct reasoning, report generation, or n8n integration.
+The LangGraph workflow now orchestrates approved company resolution, RAG query retrieval, and evidence assembly. The n8n integration lives in the workflow source under `n8n/`, while provider collection, ReAct reasoning, and report generation remain outside this backend.
 
 ## n8n Adapter
 

@@ -1,4 +1,4 @@
-import { expr, ifElse, newCredential, node, placeholder, sticky, trigger, workflow } from '@n8n/workflow-sdk';
+import { expr, ifElse, newCredential, node, sticky, trigger, workflow } from '@n8n/workflow-sdk';
 
 const startResearchDemo = trigger({
   type: 'n8n-nodes-base.manualTrigger',
@@ -254,7 +254,7 @@ const runAutonomousResearchAgent = node({
       method: 'POST',
       authentication: 'genericCredentialType',
       genericAuthType: 'httpHeaderAuth',
-      url: placeholder('Public HTTPS /research endpoint for the Python agent'),
+      url: 'https://autonomous-company-research-agent-production.up.railway.app/research',
       sendBody: true,
       contentType: 'json',
       specifyBody: 'json',
@@ -385,7 +385,7 @@ const normalizeAgentResponse = node({
           {
             id: 'success',
             name: 'success',
-            value: expr('{{ Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 && Boolean((($json.body ?? $json.data ?? $json).resolved_company?.company_name ?? ($json.body ?? $json.data ?? $json).resolved_company?.name ?? ($json.body ?? $json.data ?? $json).resolved_company?.company)) && Boolean(($json.body ?? $json.data ?? $json).evidence_bundle) && Number((($json.body ?? $json.data ?? $json).evidence_bundle?.evidence_count ?? (($json.body ?? $json.data ?? $json).metrics?.evidence_count ?? 0))) > 0 }}'),
+            value: expr('{{ Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 && Boolean((($json.body ?? $json.data ?? $json).resolved_company?.company_name ?? ($json.body ?? $json.data ?? $json).resolved_company?.name ?? ($json.body ?? $json.data ?? $json).resolved_company?.company)) && Boolean(($json.body ?? $json.data ?? $json).evidence_bundle) && Array.isArray(($json.body ?? $json.data ?? $json).evidence_bundle?.evidence) }}'),
             type: 'boolean',
           },
           {
@@ -403,13 +403,13 @@ const normalizeAgentResponse = node({
           {
             id: 'error-category',
             name: 'error_category',
-            value: expr('{{ Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 && Boolean((($json.body ?? $json.data ?? $json).resolved_company?.company_name ?? ($json.body ?? $json.data ?? $json).resolved_company?.name ?? ($json.body ?? $json.data ?? $json).resolved_company?.company)) && Boolean(($json.body ?? $json.data ?? $json).evidence_bundle) && Number((($json.body ?? $json.data ?? $json).evidence_bundle?.evidence_count ?? (($json.body ?? $json.data ?? $json).metrics?.evidence_count ?? 0))) > 0 ? "success" : (/(timeout|timed out|etimedout|timeout exceeded)/i.test(String(($json.body ?? $json.data ?? $json).message ?? (($json.body ?? $json.data ?? $json).error_message ?? (($json.body ?? $json.data ?? $json).errors?.message ?? "")))) || [408, 504].includes(Number($json.statusCode ?? $json.status ?? 0)) ? "timeout" : (Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 ? "python" : (Number($json.statusCode ?? $json.status ?? 0) >= 400 && Number($json.statusCode ?? $json.status ?? 0) < 600 ? "python" : "unexpected"))) }}'),
+            value: expr('{{ Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 && Boolean((($json.body ?? $json.data ?? $json).resolved_company?.company_name ?? ($json.body ?? $json.data ?? $json).resolved_company?.name ?? ($json.body ?? $json.data ?? $json).resolved_company?.company)) && Boolean(($json.body ?? $json.data ?? $json).evidence_bundle) && Array.isArray(($json.body ?? $json.data ?? $json).evidence_bundle?.evidence) ? "success" : (/(timeout|timed out|etimedout|timeout exceeded)/i.test(String(($json.body ?? $json.data ?? $json).message ?? (($json.body ?? $json.data ?? $json).error_message ?? (($json.body ?? $json.data ?? $json).errors?.message ?? "")))) || [408, 504].includes(Number($json.statusCode ?? $json.status ?? 0)) ? "timeout" : (Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 ? "python" : (Number($json.statusCode ?? $json.status ?? 0) >= 400 && Number($json.statusCode ?? $json.status ?? 0) < 600 ? "python" : "unexpected"))) }}'),
             type: 'string',
           },
           {
             id: 'errors',
             name: 'errors',
-            value: expr('{{ { category: Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 && Boolean((($json.body ?? $json.data ?? $json).resolved_company?.company_name ?? ($json.body ?? $json.data ?? $json).resolved_company?.name ?? ($json.body ?? $json.data ?? $json).resolved_company?.company)) && Boolean(($json.body ?? $json.data ?? $json).evidence_bundle) && Number((($json.body ?? $json.data ?? $json).evidence_bundle?.evidence_count ?? (($json.body ?? $json.data ?? $json).metrics?.evidence_count ?? 0))) > 0 ? null : (/(timeout|timed out|etimedout|timeout exceeded)/i.test(String(($json.body ?? $json.data ?? $json).message ?? (($json.body ?? $json.data ?? $json).error_message ?? (($json.body ?? $json.data ?? $json).errors?.message ?? "")))) || [408, 504].includes(Number($json.statusCode ?? $json.status ?? 0)) ? "timeout" : (Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 ? "python" : (Number($json.statusCode ?? $json.status ?? 0) >= 400 && Number($json.statusCode ?? $json.status ?? 0) < 600 ? "python" : "unexpected"))), code: ($json.body ?? $json.data ?? $json).error_code ?? (($json.body ?? $json.data ?? $json).errors?.code ?? null), message: ($json.body ?? $json.data ?? $json).message ?? (($json.body ?? $json.data ?? $json).error_message ?? (($json.body ?? $json.data ?? $json).errors?.message ?? null)), http_status: Number($json.statusCode ?? $json.status ?? 0) } }}'),
+            value: expr('{{ { category: Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 && Boolean((($json.body ?? $json.data ?? $json).resolved_company?.company_name ?? ($json.body ?? $json.data ?? $json).resolved_company?.name ?? ($json.body ?? $json.data ?? $json).resolved_company?.company)) && Boolean(($json.body ?? $json.data ?? $json).evidence_bundle) && Array.isArray(($json.body ?? $json.data ?? $json).evidence_bundle?.evidence) ? null : (/(timeout|timed out|etimedout|timeout exceeded)/i.test(String(($json.body ?? $json.data ?? $json).message ?? (($json.body ?? $json.data ?? $json).error_message ?? (($json.body ?? $json.data ?? $json).errors?.message ?? "")))) || [408, 504].includes(Number($json.statusCode ?? $json.status ?? 0)) ? "timeout" : (Number($json.statusCode ?? $json.status ?? 0) >= 200 && Number($json.statusCode ?? $json.status ?? 0) < 300 ? "python" : (Number($json.statusCode ?? $json.status ?? 0) >= 400 && Number($json.statusCode ?? $json.status ?? 0) < 600 ? "python" : "unexpected"))), code: ($json.body ?? $json.data ?? $json).error_code ?? (($json.body ?? $json.data ?? $json).errors?.code ?? null), message: ($json.body ?? $json.data ?? $json).message ?? (($json.body ?? $json.data ?? $json).error_message ?? (($json.body ?? $json.data ?? $json).errors?.message ?? null)), http_status: Number($json.statusCode ?? $json.status ?? 0) } }}'),
             type: 'object',
           },
         ],
@@ -554,65 +554,54 @@ const buildResearchSummary = node({
       includeOtherFields: false,
       assignments: {
         assignments: [
-          { id: 'status', name: 'status', value: 'success', type: 'string' },
+          { id: 'status', name: 'status', value: 'completed', type: 'string' },
           { id: 'timestamp', name: 'timestamp', value: expr('{{ $json.timestamp }}'), type: 'string' },
+          {
+            id: 'company',
+            name: 'company',
+            value: expr('{{ (() => { const company = $json.resolved_company ?? {}; return { name: company.company_name ?? company.name ?? company.company ?? "", ticker: company.ticker ?? "", cik: company.cik ?? "" }; })() }}'),
+            type: 'object',
+          },
           { id: 'research-query', name: 'research_query', value: expr('{{ $json.research_query }}'), type: 'string' },
-          { id: 'resolved-company', name: 'resolved_company', value: expr('{{ $json.resolved_company }}'), type: 'object' },
           {
             id: 'summary',
             name: 'summary',
-            value: expr('{{ `Research completed for ${$json.resolved_company.company_name} with ${$json.evidence_bundle.evidence_count} evidence items from ${$json.evidence_bundle.source_count} sources and ${$json.evidence_bundle.document_count} documents.` }}'),
-            type: 'string',
+            value: expr('{{ { evidence_count: Number($json.evidence_bundle?.evidence_count ?? $json.metrics?.evidence_count ?? 0), source_count: Number($json.evidence_bundle?.source_count ?? $json.metrics?.source_count ?? 0), document_count: Number($json.evidence_bundle?.document_count ?? $json.metrics?.document_count ?? 0) } }}'),
+            type: 'object',
           },
           {
-            id: 'executive-summary',
-            name: 'executive_summary',
-            value: expr('{{ `${$json.resolved_company.company_name} remains financially resilient but exposed to concentration and strategic execution risks.` }}'),
+            id: 'key-evidence',
+            name: 'key_evidence',
+            value: expr('{{ (() => { const evidence = Array.isArray($json.evidence_bundle?.evidence) ? $json.evidence_bundle.evidence.slice() : []; return evidence.sort((left, right) => { const scoreDiff = Number(right.similarity_score ?? 0) - Number(left.similarity_score ?? 0); if (scoreDiff !== 0) { return scoreDiff; } return String(left.document_id ?? "").localeCompare(String(right.document_id ?? "")) || String(left.chunk_id ?? "").localeCompare(String(right.chunk_id ?? "")) || String(left.source_id ?? "").localeCompare(String(right.source_id ?? "")); }).slice(0, 3).map((item, index) => ({ rank: index + 1, text: String(item.text ?? ""), similarity_score: Number(item.similarity_score ?? 0), source_url: String(item.source_url ?? ""), document_id: String(item.document_id ?? ""), chunk_id: String(item.chunk_id ?? ""), source_id: String(item.source_id ?? "") })); })() }}'),
+            type: 'array',
+          },
+          {
+            id: 'markdown',
+            name: 'markdown',
+            value: expr('{{ (() => { const body = $json; const company = body.resolved_company ?? {}; const companyName = company.company_name ?? company.name ?? company.company ?? ""; const ticker = company.ticker ?? ""; const cik = company.cik ?? ""; const researchQuery = body.research_query ?? ""; const summary = { evidence_count: Number(body.evidence_bundle?.evidence_count ?? body.metrics?.evidence_count ?? 0), source_count: Number(body.evidence_bundle?.source_count ?? body.metrics?.source_count ?? 0), document_count: Number(body.evidence_bundle?.document_count ?? body.metrics?.document_count ?? 0) }; const evidence = Array.isArray(body.evidence_bundle?.evidence) ? body.evidence_bundle.evidence.slice() : []; const sortedEvidence = evidence.sort((left, right) => { const scoreDiff = Number(right.similarity_score ?? 0) - Number(left.similarity_score ?? 0); if (scoreDiff !== 0) { return scoreDiff; } return String(left.document_id ?? "").localeCompare(String(right.document_id ?? "")) || String(left.chunk_id ?? "").localeCompare(String(right.chunk_id ?? "")) || String(left.source_id ?? "").localeCompare(String(right.source_id ?? "")); }).slice(0, 3); const companyLine = companyName + (ticker ? " (" + ticker + ")" : "") + (cik ? " [CIK " + cik + "]" : ""); const lines = ["# Company Research Result", "", "## Company", companyLine, "", "## Research Query", researchQuery || "N/A", "", "## Retrieval Summary", "- Evidence records: " + summary.evidence_count, "- Sources: " + summary.source_count, "- Documents: " + summary.document_count]; if (sortedEvidence.length > 0) { lines.push("", "## Key Evidence"); sortedEvidence.forEach((item, index) => { const title = item.source_id ? String(item.source_id) : "Evidence " + (index + 1); lines.push("", "### " + (index + 1) + ". " + title, String(item.text ?? ""), "", "Similarity: " + Number(item.similarity_score ?? 0).toFixed(3), item.source_url ? "Source: " + String(item.source_url) : "Source: N/A"); }); } return lines.join("\\n"); })() }}'),
             type: 'string',
           },
-          { id: 'evidence-bundle', name: 'evidence_bundle', value: expr('{{ $json.evidence_bundle }}'), type: 'object' },
-          { id: 'sources', name: 'sources', value: expr('{{ $json.sources }}'), type: 'array' },
-          { id: 'documents', name: 'documents', value: expr('{{ $json.documents }}'), type: 'array' },
-          { id: 'metrics', name: 'metrics', value: expr('{{ $json.metrics }}'), type: 'object' },
         ],
       },
     },
   },
   output: [
     {
-      status: 'success',
+      status: 'completed',
       timestamp: '2026-08-01T12:00:00.000Z',
-      research_query: "Analyze the company's recent financial performance and strategic risks",
-      resolved_company: {
-        company_name: 'Apple Inc.',
+      company: {
+        name: 'Apple Inc.',
         ticker: 'AAPL',
         cik: '0000320193',
       },
-      summary: 'Research completed for Apple Inc. with 1 evidence items from 1 sources and 1 documents.',
-      executive_summary: 'Apple Inc. remains financially resilient but exposed to concentration and strategic execution risks.',
-      evidence_bundle: {
-        evidence_count: 1,
-        source_count: 1,
-        document_count: 1,
-        evidence: [],
+      research_query: "Analyze the company's recent financial performance and strategic risks",
+      summary: {
+        evidence_count: 0,
+        source_count: 0,
+        document_count: 0,
       },
-      sources: [
-        {
-          title: 'Apple 10-K',
-          url: 'https://example.com/apple-10k',
-        },
-      ],
-      documents: [
-        {
-          title: 'Apple Annual Filing',
-          id: 'doc-1',
-        },
-      ],
-      metrics: {
-        evidence_count: 1,
-        source_count: 1,
-        document_count: 1,
-      },
+      key_evidence: [],
+      markdown: '# Company Research Result\n\n## Company\nApple Inc. (AAPL) [CIK 0000320193]\n\n## Research Query\nAnalyze the company\'s recent financial performance and strategic risks\n\n## Retrieval Summary\n- Evidence records: 0\n- Sources: 0\n- Documents: 0',
     },
   ],
 });
@@ -630,53 +619,32 @@ const researchResult = node({
         assignments: [
           { id: 'status', name: 'status', value: expr('{{ $json.status }}'), type: 'string' },
           { id: 'timestamp', name: 'timestamp', value: expr('{{ $json.timestamp }}'), type: 'string' },
+          { id: 'company', name: 'company', value: expr('{{ $json.company }}'), type: 'object' },
           { id: 'research-query', name: 'research_query', value: expr('{{ $json.research_query }}'), type: 'string' },
-          { id: 'resolved-company', name: 'resolved_company', value: expr('{{ $json.resolved_company }}'), type: 'object' },
-          { id: 'summary', name: 'summary', value: expr('{{ $json.summary }}'), type: 'string' },
-          { id: 'executive-summary', name: 'executive_summary', value: expr('{{ $json.executive_summary }}'), type: 'string' },
-          { id: 'evidence-bundle', name: 'evidence_bundle', value: expr('{{ $json.evidence_bundle }}'), type: 'object' },
-          { id: 'sources', name: 'sources', value: expr('{{ $json.sources }}'), type: 'array' },
-          { id: 'documents', name: 'documents', value: expr('{{ $json.documents }}'), type: 'array' },
-          { id: 'metrics', name: 'metrics', value: expr('{{ $json.metrics }}'), type: 'object' },
+          { id: 'summary', name: 'summary', value: expr('{{ $json.summary }}'), type: 'object' },
+          { id: 'key-evidence', name: 'key_evidence', value: expr('{{ $json.key_evidence }}'), type: 'array' },
+          { id: 'markdown', name: 'markdown', value: expr('{{ $json.markdown }}'), type: 'string' },
         ],
       },
     },
   },
   output: [
     {
-      status: 'success',
+      status: 'completed',
       timestamp: '2026-08-01T12:00:00.000Z',
-      research_query: "Analyze the company's recent financial performance and strategic risks",
-      resolved_company: {
-        company_name: 'Apple Inc.',
+      company: {
+        name: 'Apple Inc.',
         ticker: 'AAPL',
         cik: '0000320193',
       },
-      summary: 'Research completed for Apple Inc. with 1 evidence items from 1 sources and 1 documents.',
-      executive_summary: 'Apple Inc. remains financially resilient but exposed to concentration and strategic execution risks.',
-      evidence_bundle: {
-        evidence_count: 1,
-        source_count: 1,
-        document_count: 1,
-        evidence: [],
+      research_query: "Analyze the company's recent financial performance and strategic risks",
+      summary: {
+        evidence_count: 0,
+        source_count: 0,
+        document_count: 0,
       },
-      sources: [
-        {
-          title: 'Apple 10-K',
-          url: 'https://example.com/apple-10k',
-        },
-      ],
-      documents: [
-        {
-          title: 'Apple Annual Filing',
-          id: 'doc-1',
-        },
-      ],
-      metrics: {
-        evidence_count: 1,
-        source_count: 1,
-        document_count: 1,
-      },
+      key_evidence: [],
+      markdown: '# Company Research Result\n\n## Company\nApple Inc. (AAPL) [CIK 0000320193]\n\n## Research Query\nAnalyze the company\'s recent financial performance and strategic risks\n\n## Retrieval Summary\n- Evidence records: 0\n- Sources: 0\n- Documents: 0',
     },
   ],
 });
