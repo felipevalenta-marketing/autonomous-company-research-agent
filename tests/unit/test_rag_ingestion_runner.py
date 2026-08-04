@@ -13,8 +13,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import httpx
+
 from app.clients.pinecone_dtos import PineconeUpsertResultDTO
 from app.clients.sec_client import SecTransportError
+from app.config.defaults import build_runtime_config
 from app.models.company import ResolvedCompany
 from app.models.documents import DocumentRecord
 from app.settings import Settings
@@ -716,6 +719,137 @@ class RagIngestionRunnerTests(unittest.TestCase):
         self.assertIn("error: embedding stage failed.", stderr.getvalue())
         self.assertEqual(len(loader.calls), 1)
         self.assertEqual(len(ingester.calls), 1)
+
+    def test_ensure_document_content_repairs_utf8_bytes_with_wrong_charset(self) -> None:
+        document = self._build_document(document_id="doc-new", filing_type="10-K", filing_date="2024-11-01", content=None)
+        html = bytes(
+            [
+                0x3C,
+                0x68,
+                0x74,
+                0x6D,
+                0x6C,
+                0x3E,
+                0x3C,
+                0x62,
+                0x6F,
+                0x64,
+                0x79,
+                0x3E,
+                0x43,
+                0x6F,
+                0x6D,
+                0x70,
+                0x61,
+                0x6E,
+                0x79,
+                0xE2,
+                0x80,
+                0x99,
+                0x73,
+                0x20,
+                0x6D,
+                0x61,
+                0x6E,
+                0x61,
+                0x67,
+                0x65,
+                0x6D,
+                0x65,
+                0x6E,
+                0x74,
+                0x20,
+                0xE2,
+                0x80,
+                0x94,
+                0x20,
+                0x61,
+                0x6E,
+                0x64,
+                0x20,
+                0x69,
+                0x6E,
+                0x74,
+                0x65,
+                0x72,
+                0x65,
+                0x73,
+                0x74,
+                0x20,
+                0x72,
+                0x61,
+                0x74,
+                0x65,
+                0xE2,
+                0x80,
+                0x91,
+                0x73,
+                0x65,
+                0x6E,
+                0x73,
+                0x69,
+                0x74,
+                0x69,
+                0x76,
+                0x65,
+                0x20,
+                0x63,
+                0x6F,
+                0x75,
+                0x6E,
+                0x74,
+                0x65,
+                0x72,
+                0x70,
+                0x61,
+                0x72,
+                0x74,
+                0x69,
+                0x65,
+                0x73,
+                0x2E,
+                0x3C,
+                0x2F,
+                0x62,
+                0x6F,
+                0x64,
+                0x79,
+                0x3E,
+                0x3C,
+                0x2F,
+                0x68,
+                0x74,
+                0x6D,
+                0x6C,
+                0x3E,
+            ]
+        )
+        request = httpx.Request("GET", document.source_url)
+        response = httpx.Response(200, request=request, content=html, headers={"Content-Type": "text/html; charset=iso-8859-1"})
+
+        with patch.object(self.runner_module.httpx, "get", return_value=response):
+            loaded = self.runner_module._ensure_document_content(document, build_runtime_config(self._build_settings()))
+
+        self.assertIsNotNone(loaded.content)
+        self.assertIn(chr(0x2019), loaded.content)
+        self.assertIn(chr(0x2014), loaded.content)
+        self.assertIn(chr(0x2011), loaded.content)
+        self.assertNotIn("â", loaded.content)
+        self.assertNotIn("?", loaded.content)
+
+    def test_ensure_document_content_decodes_html_entities_and_preserves_ascii(self) -> None:
+        document = self._build_document(document_id="doc-entities", filing_type="10-K", filing_date="2024-11-01", content=None)
+        html = "<html><body>Apple&apos;s guidance &mdash; unchanged ASCII 123.</body></html>".encode("utf-8")
+        request = httpx.Request("GET", document.source_url)
+        response = httpx.Response(200, request=request, content=html, headers={"Content-Type": "text/html"})
+
+        with patch.object(self.runner_module.httpx, "get", return_value=response):
+            loaded = self.runner_module._ensure_document_content(document, build_runtime_config(self._build_settings()))
+
+        self.assertEqual(loaded.content, "Apple's guidance — unchanged ASCII 123.")
+        self.assertTrue(loaded.content.endswith("123."))
+        self.assertIn("'", loaded.content)
+        self.assertIn("—", loaded.content)
 
     def test_import_isolation(self) -> None:
         snapshot = dict(os.environ)

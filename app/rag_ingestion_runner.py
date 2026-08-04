@@ -289,7 +289,7 @@ def _ensure_document_content(document: DocumentRecord, runtime_config: RuntimeCo
     except httpx.HTTPError as exc:  # pragma: no cover - network failure boundary
         raise RuntimeError("SEC filing content could not be loaded.") from exc
 
-    content = _html_to_text(response.text)
+    content = _html_to_text(_decode_response_text(response))
     if not content.strip():
         raise RuntimeError("SEC filing content could not be extracted.")
     return replace(document, content=content)
@@ -325,6 +325,14 @@ def _html_to_text(html: str) -> str:
     parser.feed(html)
     parser.close()
     return re.sub(r"\s+", " ", parser.text()).strip()
+
+
+def _decode_response_text(response: httpx.Response) -> str:
+    raw_content = response.content
+    try:
+        return raw_content.decode("utf-8")
+    except UnicodeDecodeError:
+        return response.text
 
 
 def _build_summary(
