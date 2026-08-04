@@ -136,8 +136,24 @@ class DocumentChunkingServiceTests(unittest.TestCase):
             self.assertEqual(chunk.text, content[chunk.start_offset:chunk.end_offset])
         self.assertIn("é", "".join(chunk.text for chunk in chunks))
         self.assertIn("😀", "".join(chunk.text for chunk in chunks))
-        self.assertIn("\n", content)
-        self.assertIn("\t", content)
+        self.assertTrue(all(chunk.text.strip() for chunk in chunks))
+
+    def test_chunks_prefer_word_boundaries_and_keep_overlap(self) -> None:
+        content = "Company’s management discussed additional risks, interest rate-sensitive obligations, and counterparty exposure."
+        document = self._build_document(content=content)
+
+        chunks = chunk_document(document, chunk_size=34, overlap=8)
+
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(any(chunk.start_offset < chunks[i - 1].end_offset for i, chunk in enumerate(chunks) if i > 0))
+        for chunk in chunks:
+            self.assertLessEqual(len(chunk.text), 34)
+            self.assertTrue(chunk.text.strip())
+            if chunk.start_offset > 0:
+                self.assertFalse(content[chunk.start_offset - 1].isalnum() and content[chunk.start_offset].isalnum())
+            if chunk.end_offset < len(content):
+                self.assertFalse(content[chunk.end_offset - 1].isalnum() and content[chunk.end_offset].isalnum())
+        self.assertIn("rate-sensitive", "".join(chunk.text for chunk in chunks))
 
     def test_overlap_is_respected(self) -> None:
         document = self._build_document(content="abcdefghij")
@@ -281,7 +297,7 @@ class DocumentChunkingServiceTests(unittest.TestCase):
         self.assertEqual(chunks[0].text, content[chunks[0].start_offset:chunks[0].end_offset])
         self.assertEqual(chunks[0].start_offset, 0)
         self.assertLessEqual(chunks[-1].end_offset, len(content))
-        self.assertTrue(any("\n" in chunk.text for chunk in chunks))
+        self.assertTrue(all(chunk.text.strip() for chunk in chunks))
         self.assertTrue(any("😀" in chunk.text for chunk in chunks))
 
     def test_signature_has_no_state_input(self) -> None:

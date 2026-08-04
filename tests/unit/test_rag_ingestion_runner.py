@@ -851,6 +851,15 @@ class RagIngestionRunnerTests(unittest.TestCase):
         self.assertIn("'", loaded.content)
         self.assertIn("—", loaded.content)
 
+    def test_html_text_extraction_preserves_spacing_between_adjacent_nodes(self) -> None:
+        html = "<html><body><span>additional</span><span>risks</span> and <em>Company&apos;s</em> outlook.</body></html>"
+
+        text = self.runner_module._html_to_text(html)
+
+        self.assertEqual(text, "additional risks and Company's outlook.")
+        self.assertNotIn("additionalrisks", text)
+        self.assertIn("Company's", text)
+
     def test_import_isolation(self) -> None:
         snapshot = dict(os.environ)
         stdout = io.StringIO()

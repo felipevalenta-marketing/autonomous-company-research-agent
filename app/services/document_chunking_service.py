@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from app.models.chunks import ChunkRecord
@@ -64,7 +65,7 @@ def chunk_document(
     chunk_index = 0
 
     while start_offset < text_length:
-        end_offset = min(start_offset + size, text_length)
+        end_offset = _choose_chunk_end(content, start_offset, size)
         chunk_text = content[start_offset:end_offset]
         if not chunk_text:
             raise ChunkValidationError("generated chunk text must not be empty.")
@@ -98,7 +99,7 @@ def chunk_document(
         if end_offset == text_length:
             break
 
-        start_offset = end_offset - overlap_size
+        start_offset = _choose_next_start(content, start_offset, end_offset, overlap_size)
         chunk_index += 1
 
     return tuple(chunks)
@@ -124,6 +125,63 @@ def _build_chunk_span(
         content_checksum=checksum,
         chunk_id=chunk_id,
     )
+
+
+def _choose_chunk_end(content: str, start_offset: int, chunk_size: int) -> int:
+    target_end = min(start_offset + chunk_size, len(content))
+    if target_end >= len(content):
+        return len(content)
+
+    boundary_end = _find_last_whitespace_boundary(content, start_offset, target_end)
+    if boundary_end is None:
+        return target_end
+
+    normalized_end = _trim_trailing_whitespace(content, start_offset, boundary_end)
+    return normalized_end if normalized_end > start_offset else target_end
+
+
+def _choose_next_start(content: str, start_offset: int, end_offset: int, overlap: int) -> int:
+    candidate_start = max(end_offset - overlap, start_offset + 1)
+    if candidate_start >= len(content):
+        return len(content)
+
+    if content[candidate_start].isspace():
+        next_start = _skip_whitespace_forward(content, candidate_start)
+        return next_start if next_start > start_offset else min(len(content), end_offset)
+
+    boundary_start = _find_last_whitespace_start(content, start_offset, candidate_start)
+    if boundary_start is not None and boundary_start > start_offset:
+        return boundary_start
+
+    return candidate_start
+
+
+def _find_last_whitespace_boundary(content: str, start_offset: int, end_offset: int) -> int | None:
+    for index in range(end_offset - 1, start_offset, -1):
+        if content[index].isspace():
+            return index
+    return None
+
+
+def _find_last_whitespace_start(content: str, start_offset: int, end_offset: int) -> int | None:
+    for index in range(end_offset - 1, start_offset - 1, -1):
+        if content[index].isspace():
+            return index + 1
+    return None
+
+
+def _skip_whitespace_forward(content: str, start_offset: int) -> int:
+    index = start_offset
+    while index < len(content) and content[index].isspace():
+        index += 1
+    return index
+
+
+def _trim_trailing_whitespace(content: str, start_offset: int, end_offset: int) -> int:
+    normalized_end = end_offset
+    while normalized_end > start_offset and content[normalized_end - 1].isspace():
+        normalized_end -= 1
+    return normalized_end
 
 
 def _require_document(document: object) -> None:
