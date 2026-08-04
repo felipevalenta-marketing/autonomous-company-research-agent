@@ -1,0 +1,1126 @@
+{
+  "name": "Autonomous Company Research Agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        208,
+        192
+      ],
+      "id": "ed2cd6cb-5dcc-4883-82f9-75d2d0a1bfbd",
+      "name": "Start Research Demo"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "source",
+              "name": "source",
+              "value": "manual_demo",
+              "type": "string"
+            },
+            {
+              "id": "company",
+              "name": "company",
+              "value": "Apple Inc.",
+              "type": "string"
+            },
+            {
+              "id": "ticker",
+              "name": "ticker",
+              "value": "AAPL",
+              "type": "string"
+            },
+            {
+              "id": "cik",
+              "name": "cik",
+              "value": "0000320193",
+              "type": "string"
+            },
+            {
+              "id": "query",
+              "name": "query",
+              "value": "Analyze the company's recent financial performance and strategic risks.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        464,
+        192
+      ],
+      "id": "4d3cc75c-03fb-4f0a-a4b8-9d7782af5926",
+      "name": "Prepare Demo Request"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "company-research",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "researchApi",
+      "name": "Research API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        480
+      ],
+      "webhookId": "84b654ee-348e-4d1f-bcd9-916d52c01878"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "source",
+              "name": "source",
+              "value": "webhook",
+              "type": "string"
+            },
+            {
+              "id": "company",
+              "name": "company",
+              "value": "={{ $json.body?.company ?? $json.company ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "ticker",
+              "name": "ticker",
+              "value": "={{ $json.body?.ticker ?? $json.ticker ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cik",
+              "name": "cik",
+              "value": "={{ $json.body?.cik ?? $json.cik ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "query",
+              "name": "query",
+              "value": "={{ $json.body?.query ?? $json.query ?? \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "normalizeWebhookRequest",
+      "name": "Normalize Webhook Request",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        464,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "company-valid",
+              "name": "company_valid",
+              "value": "={{ typeof $json.company === \"string\" && $json.company.trim().length > 0 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "ticker-valid",
+              "name": "ticker_valid",
+              "value": "={{ typeof $json.ticker === \"string\" && $json.ticker.trim().length > 0 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "cik-valid",
+              "name": "cik_valid",
+              "value": "={{ typeof $json.cik === \"string\" && /^[0-9]+$/.test($json.cik.trim()) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "query-valid",
+              "name": "query_valid",
+              "value": "={{ typeof $json.query === \"string\" && $json.query.trim().length > 0 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "input-valid",
+              "name": "input_valid",
+              "value": "={{ typeof $json.company === \"string\" && $json.company.trim().length > 0 && typeof $json.ticker === \"string\" && $json.ticker.trim().length > 0 && typeof $json.cik === \"string\" && /^[0-9]+$/.test($json.cik.trim()) && typeof $json.query === \"string\" && $json.query.trim().length > 0 }}",
+              "type": "boolean"
+            },
+            {
+              "id": "normalized-cik",
+              "name": "normalized_cik",
+              "value": "={{ typeof $json.cik === \"string\" && /^[0-9]+$/.test($json.cik.trim()) ? String(parseInt($json.cik.trim(), 10)).padStart(10, \"0\") : \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "validateResearchInput",
+      "name": "Validate Research Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        720,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.input_valid ? \"true\" : \"false\" }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "true",
+              "id": "fab93c2b-690c-44fe-b73d-574d15e41eea"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "inputValidAndComplete",
+      "name": "Input Valid and Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "stage",
+              "name": "stage",
+              "value": "input_validation",
+              "type": "string"
+            },
+            {
+              "id": "error-code",
+              "name": "error_code",
+              "value": "INVALID_RESEARCH_REQUEST",
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "name": "message",
+              "value": "Company, ticker, CIK and research query are required.",
+              "type": "string"
+            },
+            {
+              "id": "source",
+              "name": "source",
+              "value": "={{ $json.source ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "errors",
+              "name": "errors",
+              "value": "={{ { category: \"validation\", code: \"INVALID_RESEARCH_REQUEST\", message: \"Company, ticker, CIK and research query are required.\" } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "validationError",
+      "name": "Validation Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1280,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://autonomous-company-research-agent-production.up.railway.app/research",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { company: $json.company, ticker: $json.ticker, cik: $json.normalized_cik, query: $json.query } }}",
+        "options": {}
+      },
+      "id": "runAutonomousResearchAgent",
+      "name": "Run Autonomous Research Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        224
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "d6oWsbSFKzWfLrTS",
+          "name": "Header Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "http-status",
+              "name": "http_status",
+              "value": "={{\n  Number(\n    $json.statusCode\n    ?? $json.status\n    ?? (\n      $json.resolved_company?.company_name\n      && Array.isArray($json.evidence_bundle?.evidence)\n        ? 200\n        : 0\n    )\n  )\n}}",
+              "type": "number"
+            },
+            {
+              "id": "research-query",
+              "name": "research_query",
+              "value": "={{ ($json.body ?? $json.data ?? $json).research_query ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "resolved-company",
+              "name": "resolved_company",
+              "value": "={{ ($json.body ?? $json.data ?? $json).resolved_company ?? {} }}",
+              "type": "object"
+            },
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "={{ ($json.body ?? $json.data ?? $json).summary ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "executive-summary",
+              "name": "executive_summary",
+              "value": "={{ ($json.body ?? $json.data ?? $json).executive_summary ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "evidence-bundle",
+              "name": "evidence_bundle",
+              "value": "={{ ($json.body ?? $json.data ?? $json).evidence_bundle ?? {} }}",
+              "type": "object"
+            },
+            {
+              "id": "sources",
+              "name": "sources",
+              "value": "={{ ($json.body ?? $json.data ?? $json).sources ?? (($json.body ?? $json.data ?? $json).evidence_bundle?.sources ?? []) }}",
+              "type": "array"
+            },
+            {
+              "id": "documents",
+              "name": "documents",
+              "value": "={{ ($json.body ?? $json.data ?? $json).documents ?? (($json.body ?? $json.data ?? $json).evidence_bundle?.documents ?? []) }}",
+              "type": "array"
+            },
+            {
+              "id": "metrics",
+              "name": "metrics",
+              "value": "={{ { evidence_count: Number((($json.body ?? $json.data ?? $json).evidence_bundle?.evidence_count ?? (($json.body ?? $json.data ?? $json).metrics?.evidence_count ?? 0))), source_count: Number((($json.body ?? $json.data ?? $json).evidence_bundle?.source_count ?? (($json.body ?? $json.data ?? $json).metrics?.source_count ?? 0))), document_count: Number((($json.body ?? $json.data ?? $json).evidence_bundle?.document_count ?? (($json.body ?? $json.data ?? $json).metrics?.document_count ?? 0))) } }}",
+              "type": "object"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ ($json.body ?? $json.data ?? $json).timestamp ?? $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "success",
+              "name": "success",
+              "value": "={{\n  Boolean(\n    ($json.resolved_company?.company_name)\n    && ($json.evidence_bundle)\n    && Array.isArray($json.evidence_bundle.evidence)\n    && !($json.error_code)\n  )\n}}",
+              "type": "boolean"
+            },
+            {
+              "id": "error-code",
+              "name": "error_code",
+              "value": "={{ ($json.body ?? $json.data ?? $json).error_code ?? (($json.body ?? $json.data ?? $json).errors?.code ?? null) }}",
+              "type": "string"
+            },
+            {
+              "id": "error-message",
+              "name": "error_message",
+              "value": "={{ ($json.body ?? $json.data ?? $json).message ?? (($json.body ?? $json.data ?? $json).error_message ?? (($json.body ?? $json.data ?? $json).errors?.message ?? null)) }}",
+              "type": "string"
+            },
+            {
+              "id": "error-category",
+              "name": "error_category",
+              "value": "={{\n  (\n    $json.resolved_company?.company_name\n    && Array.isArray($json.evidence_bundle?.evidence)\n  )\n    ? null\n    : (\n        Number($json.statusCode ?? $json.status ?? 0) === 401\n          ? \"unauthorized\"\n          : Number($json.statusCode ?? $json.status ?? 0) === 400\n            ? \"validation\"\n            : [408, 504].includes(Number($json.statusCode ?? $json.status ?? 0))\n              ? \"timeout\"\n              : Number($json.statusCode ?? $json.status ?? 0) === 502\n                ? \"retrieval\"\n                : \"unexpected\"\n      )\n}}",
+              "type": "string"
+            },
+            {
+              "id": "errors",
+              "name": "errors",
+              "value": "={{\n  {\n    category:\n      (\n        $json.resolved_company?.company_name\n        && Array.isArray($json.evidence_bundle?.evidence)\n      )\n        ? null\n        : \"unexpected\",\n    code: $json.error_code ?? null,\n    message: $json.message ?? null,\n    http_status:\n      Number(\n        $json.statusCode\n        ?? $json.status\n        ?? (\n          $json.resolved_company?.company_name\n          && Array.isArray($json.evidence_bundle?.evidence)\n            ? 200\n            : 0\n        )\n      )\n  }\n}}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "normalizeAgentResponse",
+      "name": "Normalize Agent Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1568,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.success ? \"true\" : \"false\" }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "true",
+              "id": "5d39bc0d-5cf8-4ee0-9753-c41a7bdaf6ec"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "researchSuccessful",
+      "name": "Research Successful?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error_category }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "timeout",
+              "id": "c7861633-c998-4df7-a517-843bbb2b8c04"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "timeoutCheck",
+      "name": "Timeout?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2112,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error_category }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "python"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "pythonErrorCheck",
+      "name": "Python Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2128,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "completed",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "research-query",
+              "name": "research_query",
+              "value": "={{ $json.research_query }}",
+              "type": "string"
+            },
+            {
+              "id": "resolved-company",
+              "name": "resolved_company",
+              "value": "={{ $json.resolved_company }}",
+              "type": "object"
+            },
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "={{\n  `Research completed for ${$json.resolved_company.company_name} with ${$json.metrics.evidence_count} evidence ${\n    $json.metrics.evidence_count === 1 ? 'item' : 'items'\n  } from ${$json.metrics.source_count} ${\n    $json.metrics.source_count === 1 ? 'source' : 'sources'\n  } and ${$json.metrics.document_count} ${\n    $json.metrics.document_count === 1 ? 'document' : 'documents'\n  }.`\n}}",
+              "type": "string"
+            },
+            {
+              "id": "executive-summary",
+              "name": "executive_summary",
+              "value": "={{\n  `Retrieved ${$json.metrics.evidence_count} relevant evidence items for ${$json.resolved_company.company_name} concerning financial performance and strategic risks.`\n}}",
+              "type": "string"
+            },
+            {
+              "id": "evidence-bundle",
+              "name": "evidence_bundle",
+              "value": "={{ $json.evidence_bundle }}",
+              "type": "object"
+            },
+            {
+              "id": "sources",
+              "name": "sources",
+              "value": "={{ $json.sources }}",
+              "type": "array"
+            },
+            {
+              "id": "documents",
+              "name": "documents",
+              "value": "={{ $json.documents }}",
+              "type": "array"
+            },
+            {
+              "id": "metrics",
+              "name": "metrics",
+              "value": "={{ $json.metrics }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "buildResearchSummary",
+      "name": "Build Research Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2112,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "research-query",
+              "name": "research_query",
+              "value": "={{ $json.research_query }}",
+              "type": "string"
+            },
+            {
+              "id": "resolved-company",
+              "name": "resolved_company",
+              "value": "={{ $json.resolved_company }}",
+              "type": "object"
+            },
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "executive-summary",
+              "name": "executive_summary",
+              "value": "={{ $json.executive_summary }}",
+              "type": "string"
+            },
+            {
+              "id": "evidence-bundle",
+              "name": "evidence_bundle",
+              "value": "={{ $json.evidence_bundle }}",
+              "type": "object"
+            },
+            {
+              "id": "sources",
+              "name": "sources",
+              "value": "={{ $json.sources }}",
+              "type": "array"
+            },
+            {
+              "id": "documents",
+              "name": "documents",
+              "value": "={{ $json.documents }}",
+              "type": "array"
+            },
+            {
+              "id": "metrics",
+              "name": "metrics",
+              "value": "={{ $json.metrics }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "researchResult",
+      "name": "Research Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2368,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "stage",
+              "name": "stage",
+              "value": "research_execution",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $json.timestamp ?? $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "http-status",
+              "name": "http_status",
+              "value": "={{ Number($json.http_status ?? 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "error-code",
+              "name": "error_code",
+              "value": "={{ $json.error_code ?? \"PYTHON_RESEARCH_ERROR\" }}",
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "name": "message",
+              "value": "={{ $json.error_message ?? \"The Python research agent returned an error.\" }}",
+              "type": "string"
+            },
+            {
+              "id": "errors",
+              "name": "errors",
+              "value": "={{ { category: \"python\", code: ($json.error_code ?? \"PYTHON_RESEARCH_ERROR\"), message: ($json.error_message ?? \"The Python research agent returned an error.\"), http_status: Number($json.http_status ?? 0) } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "pythonError",
+      "name": "Python Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2384,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "stage",
+              "name": "stage",
+              "value": "research_execution",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $json.timestamp ?? $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "http-status",
+              "name": "http_status",
+              "value": "={{ Number($json.http_status ?? 408) }}",
+              "type": "number"
+            },
+            {
+              "id": "error-code",
+              "name": "error_code",
+              "value": "REQUEST_TIMEOUT",
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "name": "message",
+              "value": "The Python research agent timed out.",
+              "type": "string"
+            },
+            {
+              "id": "errors",
+              "name": "errors",
+              "value": "={{ { category: \"timeout\", code: \"REQUEST_TIMEOUT\", message: \"The Python research agent timed out.\", http_status: Number($json.http_status ?? 408) } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "timeout",
+      "name": "Timeout",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2384,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "stage",
+              "name": "stage",
+              "value": "research_execution",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $json.timestamp ?? $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "http-status",
+              "name": "http_status",
+              "value": "={{ Number($json.http_status ?? 500) }}",
+              "type": "number"
+            },
+            {
+              "id": "error-code",
+              "name": "error_code",
+              "value": "={{ $json.error_code ?? \"UNEXPECTED_RESEARCH_ERROR\" }}",
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "name": "message",
+              "value": "={{ $json.error_message ?? \"Unexpected research workflow error.\" }}",
+              "type": "string"
+            },
+            {
+              "id": "errors",
+              "name": "errors",
+              "value": "={{ { category: \"unexpected\", code: ($json.error_code ?? \"UNEXPECTED_RESEARCH_ERROR\"), message: ($json.error_message ?? \"Unexpected research workflow error.\"), http_status: Number($json.http_status ?? 500) } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "unexpectedError",
+      "name": "Unexpected Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2384,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Input\n\nManual demo and webhook entry points normalize into company, ticker, cik, and query.",
+        "height": 220,
+        "width": 520,
+        "color": 2
+      },
+      "id": "inputNote",
+      "name": "Input",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        32,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Validation\n\nValidate required research fields early and route invalid requests to a deterministic JSON error.",
+        "height": 220,
+        "width": 520,
+        "color": 4
+      },
+      "id": "validationNote",
+      "name": "Validation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        592,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Research Agent\n\nCall the external Python research service only. SEC, OpenAI, Pinecone, LangGraph, and RAG stay in Python.",
+        "height": 260,
+        "width": 560,
+        "color": 6
+      },
+      "id": "agentNote",
+      "name": "Research Agent",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Output\n\nNormalize the Python response into presentation-safe research fields and deterministic error payloads.",
+        "height": 240,
+        "width": 520,
+        "color": 3
+      },
+      "id": "outputNote",
+      "name": "Output",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Presentation\n\nKeep the demo readable for the Ironhack final project with stable labels, consistent branching, and no crossed connections.",
+        "height": 240,
+        "width": 540,
+        "color": 5
+      },
+      "id": "presentationNote",
+      "name": "Presentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        32,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Architecture\n\nTwo independent triggers feed one validation chain. Success flows to the summary branch, while validation, Python, timeout, and unexpected branches terminate cleanly.",
+        "height": 260,
+        "width": 620
+      },
+      "id": "architectureNote",
+      "name": "Architecture",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        624
+      ]
+    }
+  ],
+  "pinData": {
+    "Prepare Demo Request": [
+      {
+        "json": {
+          "source": "manual_demo",
+          "company": "Apple Inc.",
+          "ticker": "AAPL",
+          "cik": "0000320193",
+          "query": "Analyze the company's recent financial performance and strategic risks."
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Start Research Demo": {
+      "main": [
+        [
+          {
+            "node": "Prepare Demo Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Demo Request": {
+      "main": [
+        [
+          {
+            "node": "Validate Research Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research API": {
+      "main": [
+        [
+          {
+            "node": "Normalize Webhook Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Webhook Request": {
+      "main": [
+        [
+          {
+            "node": "Validate Research Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Research Input": {
+      "main": [
+        [
+          {
+            "node": "Input Valid and Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Valid and Complete?": {
+      "main": [
+        [
+          {
+            "node": "Run Autonomous Research Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Autonomous Research Agent": {
+      "main": [
+        [
+          {
+            "node": "Normalize Agent Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Agent Response": {
+      "main": [
+        [
+          {
+            "node": "Research Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Successful?": {
+      "main": [
+        [
+          {
+            "node": "Build Research Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Timeout?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Timeout?": {
+      "main": [
+        [
+          {
+            "node": "Timeout",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Python Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Python Error?": {
+      "main": [
+        [
+          {
+            "node": "Python Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unexpected Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Research Summary": {
+      "main": [
+        [
+          {
+            "node": "Research Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "82912513-0259-43e5-8758-7f9ba6cf6977",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "827a65d2ce409b0d51bf896cd8ac4ca4db0c5864962ce3171b4208c036319970"
+  },
+  "nodeGroups": [],
+  "id": "b6THKkvUQaJegSRM",
+  "tags": []
+}
