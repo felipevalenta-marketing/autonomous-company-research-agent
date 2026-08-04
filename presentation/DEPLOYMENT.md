@@ -2,17 +2,18 @@
 
 The presentation is a static, self-contained site (`index.html`, `styles.css`, `script.js`). It has no build step and no backend dependency — it can be opened directly or served from any static host.
 
-## Before deploying: replace placeholders
+## Before presenting: resolve the remaining placeholder
 
-Three placeholder strings appear in `index.html` and must be replaced with real values before the final presentation:
+`LIVE_DEMO_URL` and `LINKEDIN_URL` have been resolved and no longer appear in `index.html`:
 
-| Placeholder | Where it appears | Replace with |
+| Item | Where it appears | Status |
 |---|---|---|
-| `LIVE_DEMO_URL` | Slide 8 (Open Live Demo button), Slide 9 (Project Demo link) | The deployed demo URL, or a local/staged alternative if no public demo exists |
-| `GITHUB_REPOSITORY_URL` reference | Already filled in as `https://github.com/felipevalenta-marketing/autonomous-company-research-agent` (from the repo's `origin` remote) | Update only if the remote changes |
-| `LINKEDIN_URL` | Slide 9 (closing links) | Your LinkedIn profile URL, if you want it included |
+| Railway deployment link | Slide 8 (Open Railway Deployment button) | Resolved to `https://autonomous-company-research-agent-production.up.railway.app` |
+| GitHub repository link | Slide 8 and Slide 9 | Resolved to `https://github.com/felipevalenta-marketing/autonomous-company-research-agent` |
+| LinkedIn link | Slide 9 (closing links) | Removed — no confirmed URL available. An HTML comment in the closing slide markup shows exactly where to restore `<a href="REAL_LINKEDIN_URL">` if one becomes available. |
+| `N8N_WORKFLOW_URL` | Slide 8 (Open n8n Workflow button) | **Still a placeholder.** n8n is self-hosted and imported locally (see `n8n/README.md`) — there is no public workflow URL. Replace the `href="N8N_WORKFLOW_URL"` in `index.html` with the presenter's local n8n editor URL (e.g. `http://localhost:5678/workflow/<id>`) right before presenting. |
 
-Use your editor's find-and-replace across `presentation/index.html` — each placeholder appears exactly once or twice and is easy to locate.
+Search `presentation/index.html` for `N8N_WORKFLOW_URL` to find the exact spot.
 
 ## Option A — GitHub Pages (preferred)
 
@@ -58,3 +59,30 @@ Then open `http://localhost:8080`.
 - The presentation does not modify or depend on the production application (`app/`), its services, tests, or configuration.
 - No API keys or `.env` values are used or referenced anywhere in the presentation.
 - Fonts are loaded from Google Fonts via CDN with system-font fallbacks; the deck remains legible offline if the CDN is unreachable.
+
+## Presenter timing (9 slides, ~10 minutes)
+
+Not shown on the slides themselves — for rehearsal only.
+
+| Slide | Content | Target time |
+|---|---|---|
+| 1 | Title | 0:20 |
+| 2 | About Me | 0:40 |
+| 3 | Project Elevator Pitch | 0:55 |
+| 4 | How It Works | 1:05 |
+| 5 | Technical Challenge | 1:10 |
+| 6 | Biggest Mistake | 1:05 |
+| 7 | Final Results | 0:45 |
+| 8 | Demo slide + live demo | 3:00 |
+| 9 | Closing | 0:15 |
+
+Total: approximately 9:15–10:00.
+
+Live demo order (run after leaving the Demo slide, return to Closing at the end):
+
+1. Open n8n, show the workflow at a high level.
+2. Run the Apple request.
+3. Open the final Research Result — show status, resolved company, evidence count, evidence text, similarity score, and SEC source URL.
+4. Run or show the Microsoft request and confirm it returns evidence successfully.
+5. Briefly explain that this was the regression case fixed during development.
+6. Return to the Closing slide.

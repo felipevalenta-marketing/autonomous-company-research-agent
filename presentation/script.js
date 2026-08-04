@@ -83,6 +83,34 @@
   updateActive(0);
 
   // ---------------------------------------------------------------
+  // Staggered reveal-on-scroll for grouped elements (chips, cards, steps)
+  // ---------------------------------------------------------------
+  const revealPrefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  document.querySelectorAll(".reveal-group").forEach((group) => {
+    Array.from(group.querySelectorAll(".reveal")).forEach((el, i) => {
+      el.style.setProperty("--reveal-delay", `${Math.min(i * 60, 480)}ms`);
+    });
+  });
+
+  if (!revealPrefersReducedMotion && "IntersectionObserver" in window) {
+    const revealObserver = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            obs.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+    document.querySelectorAll(".reveal").forEach((el) => revealObserver.observe(el));
+  } else {
+    document.querySelectorAll(".reveal").forEach((el) => el.classList.add("is-visible"));
+  }
+
+  // ---------------------------------------------------------------
   // Subtle animated network background (decorative, reduced-motion aware)
   // ---------------------------------------------------------------
   const canvas = document.getElementById("bg-canvas");
