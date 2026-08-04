@@ -12,6 +12,8 @@ from app.clients.pinecone_dtos import PineconeQueryMatchDTO, PineconeQueryRespon
 from app.models.company import ResolvedCompany
 from app.models.providers import RAGResult
 from app.rag.normalization import RAGMetadataError, RAGScoreError, normalize_rag_results
+from app.services.evidence_assembly_service import assemble_evidence
+from app.services.rag_query_service import RAGQueryResult
 from app.utils.hashing import sha256_text
 
 
@@ -71,6 +73,36 @@ class RAGNormalizationTests(unittest.TestCase):
         self.assertEqual(result.source_url, "https://example.com/doc")
         self.assertEqual(result.retrieval_scope, "company:cik:abc")
         self.assertEqual(result.result_id, sha256_text("source-1|doc-1|chunk-1|checksum-1"))
+
+    def test_ingestion_shaped_text_id_match_survives_normalization_and_assembly(self) -> None:
+        company = self._build_company()
+        match = PineconeQueryMatchDTO(
+            record_id="match-1",
+            score=0.91,
+            metadata={
+                "document_id": "doc-1",
+                "chunk_id": "chunk-1",
+                "source_id": "source-1",
+                "company_name": "Apple Inc.",
+                "ticker": "AAPL",
+                "cik": "0000320193",
+                "text_id": "Relevant retrieved passage.",
+                "content_checksum": "checksum-1",
+                "source_url": "https://example.com/doc",
+                "filing_form": "10-K",
+                "filing_date": "2024-01-01",
+            },
+        )
+        response = PineconeQueryResponseDTO(matches=(match,), namespace="company:cik:abc")
+
+        results = normalize_rag_results(company, response, retrieval_scope="company:cik:abc")
+        bundle = assemble_evidence(RAGQueryResult(query="Why does the company matter?", results=results), max_evidence=3)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].text, "Relevant retrieved passage.")
+        self.assertEqual(bundle.evidence_count, 1)
+        self.assertEqual(bundle.source_count, 1)
+        self.assertEqual(bundle.document_count, 1)
 
     def test_missing_required_text_excludes_match(self) -> None:
         company = self._build_company()

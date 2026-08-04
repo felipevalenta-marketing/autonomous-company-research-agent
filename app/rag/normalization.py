@@ -182,7 +182,7 @@ def _validate_company_identity(resolved_company: ResolvedCompany, metadata: Mapp
 
 
 def _extract_text(metadata: Mapping[str, object]) -> str | None:
-    for key in ("text", "content"):
+    for key in ("text", "content", "text_id"):
         value = metadata.get(key)
         if value is None:
             continue
