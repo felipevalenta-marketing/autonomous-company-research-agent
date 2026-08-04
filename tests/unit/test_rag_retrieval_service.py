@@ -8,10 +8,14 @@ import unittest
 from dataclasses import asdict
 from pathlib import Path
 
+import httpx
+
 from app.clients.openai_embedding_dtos import OpenAIEmbeddingItemDTO, OpenAIEmbeddingUsageDTO, OpenAIEmbeddingsResponseDTO
+from app.clients.pinecone_client import PineconeClient
 from app.clients.pinecone_dtos import PineconeQueryMatchDTO, PineconeQueryResponseDTO
 from app.config.defaults import PineconeConfig
 from app.models.company import ResolvedCompany
+from app.models.execution import RuntimeConfig
 from app.rag.normalization import normalize_rag_results
 from app.rag.retrieval_service import (
     RAGEmbeddingError,
@@ -24,7 +28,7 @@ from app.rag.retrieval_service import (
 )
 from app.services.embedding_service import EmbeddingRecord, EmbeddingServiceError, EmbeddingServiceResult
 from app.services.vector_preparation_service import build_pinecone_namespace
-from app.services.vector_query_service import VectorQueryError
+from app.services.vector_query_service import VectorQueryError, query_pinecone_vectors
 from app.utils.hashing import sha256_text
 
 
@@ -312,3 +316,62 @@ class RAGRetrievalServiceTests(unittest.TestCase):
 
         results = retrieve_rag_results(query, company, embedding_service, vector_query_service, top_k=4, namespace_prefix="company")
         json.dumps([asdict(result) for result in results])
+
+    def test_empty_pinecone_values_are_treated_as_absent_through_real_client(self) -> None:
+        query = "Apple strategy?"
+        company = self._build_company()
+        namespace = build_pinecone_namespace(company, "company")
+        embedding_service = FakeEmbeddingService(response=self._build_embedding_result(query))
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(request.method, "POST")
+            self.assertEqual(request.url.path, "/query")
+            return httpx.Response(
+                200,
+                json={
+                    "matches": [
+                        {
+                            "id": "vec-1",
+                            "score": 0.9,
+                            "metadata": {
+                                "document_id": "doc-1",
+                                "chunk_id": "chunk-1",
+                                "source_id": "source-1",
+                                "text": "Relevant retrieved passage.",
+                                "source_url": "https://example.com/doc",
+                                "company_name": "Apple Inc.",
+                                "ticker": "AAPL",
+                                "cik": "0000320193",
+                                "content_checksum": "checksum-1",
+                            },
+                            "values": [],
+                        }
+                    ],
+                    "namespace": namespace,
+                },
+            )
+
+        runtime_config = RuntimeConfig(sec_user_agent="Example App (dev@example.com)")
+        pinecone_config = PineconeConfig(
+            api_key="pinecone-key",
+            index_host="https://example-index.svc.pinecone.io",
+            namespace_prefix="company",
+            vector_dimension=3,
+            api_version="2024-07",
+            max_upsert_batch_size=100,
+            max_query_top_k=5,
+        )
+        pinecone_client = PineconeClient(
+            runtime_config=runtime_config,
+            pinecone_config=pinecone_config,
+            http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+        )
+
+        def vector_query_service(vector, namespace_value, top_k, metadata_filter):  # noqa: ANN001
+            return query_pinecone_vectors(vector, pinecone_client, namespace_value, pinecone_config, top_k=top_k, filter=metadata_filter)
+
+        results = retrieve_rag_results(query, company, embedding_service, vector_query_service, top_k=4, namespace_prefix="company")
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].retrieval_scope, namespace)
+        self.assertEqual(results[0].source_id, "source-1")

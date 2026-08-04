@@ -118,6 +118,33 @@ class PineconeClientTests(unittest.TestCase):
         self.assertEqual(response.namespace, "company:cik:abc")
         self.assertEqual([match.record_id for match in response.matches], ["vec-1", "vec-2"])
 
+    def test_successful_query_with_empty_values_treats_values_as_absent(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(request.method, "POST")
+            self.assertEqual(request.url.path, "/query")
+            body = json.loads(request.content.decode("utf-8"))
+            self.assertEqual(body["namespace"], "company:cik:abc")
+            return httpx.Response(
+                200,
+                json={
+                    "matches": [
+                        {
+                            "id": "vec-1",
+                            "score": 0.2,
+                            "metadata": {"source_id": "source-1"},
+                            "values": [],
+                        }
+                    ],
+                    "namespace": "company:cik:abc",
+                },
+            )
+
+        client = self._build_client(handler)
+        response = client.query((0.1, 0.2, 0.3), "company:cik:abc", 4)
+
+        self.assertEqual(response.namespace, "company:cik:abc")
+        self.assertIsNone(response.matches[0].values)
+
     def test_delete_by_ids_maps_to_dto(self) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
             self.assertEqual(request.url.path, "/vectors/delete")

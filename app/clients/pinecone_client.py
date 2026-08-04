@@ -447,6 +447,8 @@ def _parse_query_match(payload: Any) -> PineconeQueryMatchDTO:
     score = payload.get("score")
     metadata = payload.get("metadata", {})
     values = payload.get("values")
+    if isinstance(values, list) and not values:
+        values = None
     return PineconeQueryMatchDTO(
         record_id=record_id,
         score=score,
