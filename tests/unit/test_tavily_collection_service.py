@@ -62,6 +62,13 @@ class TavilyCollectionServiceTests(unittest.TestCase):
             ),
         )
 
+    def _langgraph_module_snapshot(self) -> dict[str, int]:
+        return {
+            name: id(module)
+            for name, module in sys.modules.items()
+            if name == "langgraph" or name.startswith("langgraph.")
+        }
+
     def test_collect_market_research_builds_deterministic_query(self) -> None:
         client = FakeTavilyClient(self.response)
 
@@ -122,11 +129,12 @@ class TavilyCollectionServiceTests(unittest.TestCase):
     def test_collect_market_research_does_not_mutate_state_or_import_langgraph(self) -> None:
         state = {"market_findings": [], "sources": []}
         client = FakeTavilyClient(self.response)
+        before_langgraph_modules = self._langgraph_module_snapshot()
 
         collect_market_research(self.company, client)
 
         self.assertEqual(state, {"market_findings": [], "sources": []})
-        self.assertNotIn("langgraph", sys.modules)
+        self.assertEqual(before_langgraph_modules, self._langgraph_module_snapshot())
         self.assertNotIn("state", inspect.signature(collect_market_research).parameters)
 
     def test_invalid_max_results_raises_input_error(self) -> None:

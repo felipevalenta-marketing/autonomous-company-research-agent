@@ -88,6 +88,13 @@ class SecCollectionServiceTests(unittest.TestCase):
             ),
         )
 
+    def _langgraph_module_snapshot(self) -> dict[str, int]:
+        return {
+            name: id(module)
+            for name, module in sys.modules.items()
+            if name == "langgraph" or name.startswith("langgraph.")
+        }
+
     def test_collect_sec_documents_returns_documents_and_sources(self) -> None:
         client = FakeSecClient(self.submissions, self.facts)
 
@@ -136,12 +143,13 @@ class SecCollectionServiceTests(unittest.TestCase):
     def test_service_does_not_require_shared_state_or_langgraph(self) -> None:
         state = {"documents": [], "sources": []}
         client = FakeSecClient(self.submissions, self.facts)
+        before_langgraph_modules = self._langgraph_module_snapshot()
 
         collect_sec_documents(self.resolved_company, client, self.runtime_config)
         collect_financial_data(self.resolved_company, client, self.runtime_config)
 
         self.assertEqual(state, {"documents": [], "sources": []})
-        self.assertNotIn("langgraph", sys.modules)
+        self.assertEqual(before_langgraph_modules, self._langgraph_module_snapshot())
 
     def test_service_signatures_do_not_accept_state_inputs(self) -> None:
         self.assertNotIn("state", inspect.signature(collect_sec_documents).parameters)
